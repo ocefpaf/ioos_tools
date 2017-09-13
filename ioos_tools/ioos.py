@@ -2,7 +2,9 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import fnmatch
+
 import requests
+from retrying import retry
 import numpy as np
 import pandas as pd
 from glob import glob
@@ -362,6 +364,7 @@ def pyoos2df(collector, station_id, df_name=None):
     return df
 
 
+@retry(stop_max_attempt_number=5, wait_fixed=3000)
 def collector2table(collector, config, col='sea_water_temperature (C)'):
     """
     collector2table returns the station stable as a DataFrame.
@@ -380,7 +383,7 @@ def collector2table(collector, config, col='sea_water_temperature (C)'):
     except ExceptionReport:
         try:
             end = c.end_time
-            response = c.filter(end=c.start_time).raw(responseFormat='text/csv')
+            response = c.filter(end=c.start_time).raw(responseFormat='text/csv')  # noqa
             c.filter(end=end)
         except ExceptionReport:
             # No data available in collection, so return an empty list.

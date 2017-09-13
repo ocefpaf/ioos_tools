@@ -9,5 +9,6 @@ owslib
 pandas
 pytz
 requests
+retrying
 scikit-learn
 scipy
