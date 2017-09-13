@@ -1,6 +1,14 @@
 Changelog
 ---------
 
+Version 1.0.1
+
+# Fix folium args syntax
+
+Version 1.0.0
+
+* First oficial release
+
 Version 0.5.0
 
 * Faster `is_model`. (Bypass iris cube creation.)
