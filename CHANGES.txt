@@ -1,9 +1,13 @@
 Changelog
 ---------
 
+Version 1.1.0
+
+* Use retrying to access SOS servers.
+
 Version 1.0.1
 
-# Fix folium args syntax
+* Fix folium args syntax
 
 Version 1.0.0
 
