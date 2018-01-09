@@ -395,10 +395,14 @@ def collector2table(collector, config, col='sea_water_temperature (C)'):
         df.update({station: g.get_group(station).iloc[0]})
     df = pd.DataFrame.from_dict(df).T
 
+    station_dict = {}
+    for offering in c.server.offerings:
+        station_dict.update({offering.name: offering.description})
+
     names = []
     for sta in df.index:
-        names.extend([offering.description for offering in
-                      c.server.offerings if sta == offering.name])
+        names.append(station_dict.get(sta, sta))
+
     df['name'] = names
 
     observations = []

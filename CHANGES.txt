@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+Version 1.1.1
+
+* Fix misaligned table index when station name is absent in `collector2table`.
+
 Version 1.1.0
 
 * Use retrying to access SOS servers.
