@@ -22,6 +22,7 @@ from contextlib import contextmanager
 from lxml import etree
 from owslib import fes
 from owslib.ows import ExceptionReport
+import timeout_decorator
 
 from .tardis import cube2series
 
@@ -565,6 +566,7 @@ def get_model_name(url):
     return mod_name
 
 
+@timeout_decorator.timeout(10, use_signals=False)
 def is_station(url):
     from netCDF4 import Dataset
     with Dataset(url) as nc:
