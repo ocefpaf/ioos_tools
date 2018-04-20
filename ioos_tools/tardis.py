@@ -19,10 +19,6 @@ try:
 except ImportError:
     from pandas.tseries.index import DatetimeIndex  # pandas <0.20
 
-iris.FUTURE.netcdf_promote = True
-iris.FUTURE.netcdf_no_unlimited = True
-iris.FUTURE.cell_datetime_objects = True
-
 
 """
 Tools to manipulate iris cubes.
@@ -124,11 +120,14 @@ def z_coord(cube):
         zvars = [coord for coord in cube.coords(axis='Z')
                  if coord.name() in dimensionless]
 
-    if len(zvars) == 1:
-        zvar = zvars[0]
+    if not zvars:
+        raise ValueError(f'Could not find the vertical coordinate!')
+
+    if len(zvars) > 1:
+        raise ValueError(f'Found more than one vertical coordinate: {zvars}')
     else:
-        msg = 'Found more than one vertical coordinate: {!r}'.format
-        raise ValueError(msg(zvars))
+        zvar = zvars[0]
+
     return zvar
 
 
@@ -157,7 +156,7 @@ def _get_surface_idx(cube):
         return idx
 
 
-def get_surface(cube):
+def get_surface(cube, conventions='None'):
     """
     Work around `iris.cube.Cube.slices` error:
     The requested coordinates are not orthogonal.
@@ -174,10 +173,12 @@ def get_surface(cube):
     True
 
     """
-    conventions = cube.attributes.get('Conventions', 'None')
+    conventions = cube.attributes.get('Conventions', conventions)
 
     # Short-circuit if cube does not have a z-axis.
     if 'UGRID' not in conventions.upper() and cube.ndim == 3:
+        return cube
+    if 'UGRID' in conventions.upper() and cube.ndim == 2:
         return cube
 
     idx = _get_surface_idx(cube)
