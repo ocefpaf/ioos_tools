@@ -1,7 +1,7 @@
 Changelog
 ---------
 
-Version 1.1.2
+Version 1.2.0
 
 * Removed iris.FUTURE, they are all toggled by default now.
 * Better error handling in `z_coord()`.
