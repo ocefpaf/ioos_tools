@@ -8,6 +8,10 @@ Version 1.2.0
 * Added an option to enter the mesh type `get_surface()`.
   (Many datasets do not have the mesh type in the metadata.)
 
+Version 1.1.2
+
+* Use timeout-decorate in `is_station()` to skip URLs that takes longer than 10 s.
+
 Version 1.1.1
 
 * Fix misaligned table index when station name is absent in `collector2table`.
