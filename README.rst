@@ -14,8 +14,4 @@ utilities
 IOOS/SECOORA utilities functions.
 ---------------------------------
 
-A collection of misc functions used in IOOS/SECOORA notebooks.
-Examples
-`here <http://nbviewer.ipython.org/github/ioos/secoora/tree/master/notebooks/>`__
-and
-`here <http://nbviewer.ipython.org/github/ioos/system-test/tree/master/>`__.
+A collection of misc functions used in IOOS Data Demo Center `notebooks examples <https://ioos.github.io/notebooks_demos/>`__.
