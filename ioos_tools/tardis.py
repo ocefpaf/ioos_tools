@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from datetime import datetime
 
-import netcdftime
+import cftime
 import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree as KDTree
@@ -652,7 +652,7 @@ def _add_iris_coord(cube, name, points, dim, units=None, aux=False):
 
     # Convert datetime objects to Iris' current datetime representation.
     if isinstance(points, np.ndarray) and points.dtype == object:
-        dt_types = (datetime, netcdftime.datetime)
+        dt_types = (datetime, cftime.datetime)
         if all([isinstance(i, dt_types) for i in points]):
             points = units.date2num(points)
 
