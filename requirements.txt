@@ -6,7 +6,7 @@ netcdf4
 numpy
 oceans
 owslib
-pandas
+pandas>=0.20
 pytz
 requests
 retrying

@@ -1,23 +1,21 @@
-from __future__ import absolute_import, division, print_function
-
 from datetime import datetime
 
+import cf_units
+
 import cftime
-import numpy as np
-import pandas as pd
-from scipy.spatial import cKDTree as KDTree
 
 import iris
-import cf_units
 from iris import Constraint
-from iris.cube import CubeList
 from iris.coords import AuxCoord, DimCoord
-from iris.exceptions import CoordinateNotFoundError, CoordinateMultiDimError
+from iris.cube import CubeList
+from iris.exceptions import CoordinateMultiDimError, CoordinateNotFoundError
 
-try:
-    from pandas.core.indexes.datetimes import DatetimeIndex  # pandas >=0.20
-except ImportError:
-    from pandas.tseries.index import DatetimeIndex  # pandas <0.20
+import numpy as np
+
+import pandas as pd
+from pandas.core.indexes.datetimes import DatetimeIndex
+
+from scipy.spatial import cKDTree as KDTree
 
 
 """
@@ -85,12 +83,12 @@ def z_coord(cube):
     Examples
     --------
     >>> import iris
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> zvar = z_coord(cube)
     >>> zvar.name()
-    'ocean_s_coordinate_g1'
+    'ocean_s_coordinate_g2'
     >>> cube.coord_dims(zvar)
     (1,)
 
@@ -139,8 +137,7 @@ def _get_surface_idx(cube):
     """
     z = z_coord(cube)
     if not z:
-        msg = "Cannot find the surface for cube {!r}".format
-        raise ValueError(msg(cube))
+        raise ValueError(f'Cannot find the surface for cube {repr(cube)}')
     else:
         if np.argmin(z.shape) == 0 and z.ndim == 2:
             points = z[:, 0].points
@@ -164,8 +161,8 @@ def get_surface(cube, conventions='None'):
     Examples
     --------
     >>> import iris
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> cube.ndim == 4
     True
@@ -187,8 +184,7 @@ def get_surface(cube, conventions='None'):
     elif cube.ndim == 3 and 'UGRID' not in conventions.upper():
         return cube[int(idx), ...]
     else:
-        msg = "Cannot find the surface for cube {!r}".format
-        raise ValueError(msg(cube))
+        raise ValueError(f'Cannot find the surface for cube {repr(cube)}')
 
 
 def time_coord(cube):
@@ -198,8 +194,8 @@ def time_coord(cube):
     Examples
     --------
     >>> import iris
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> timevar = time_coord(cube)
     >>> timevar.name()  # What is the time coordinate named?
@@ -213,11 +209,9 @@ def time_coord(cube):
     if not timevars:
         timevars = [coord for coord in cube.dim_coords if 'time' in coord.name()]  # noqa
         if not timevars:
-            msg = 'Could not find "time" in {!r}'.format
-            raise ValueError(msg(cube.dim_coords))
+            ValueError(f'Could not find "time" in {repr(cube.dim_coords)}')
     if len(timevars) != 1:
-        msg = 'Found more than one time coordinates!'
-        raise ValueError(msg)
+        raise ValueError('Found more than one time coordinates!')
     timevar = timevars[0]
     return timevar
 
@@ -230,8 +224,8 @@ def time_near(cube, datetime_obj):
     --------
     >>> import iris
     >>> from datetime import datetime
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> isinstance(time_near(cube, datetime.utcnow()), np.integer)
     True
@@ -255,8 +249,8 @@ def time_slice(cube, start, stop=None):
     --------
     >>> import iris
     >>> from datetime import datetime, timedelta
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> stop = datetime.utcnow()
     >>> start = stop - timedelta(days=7)
@@ -268,9 +262,11 @@ def time_slice(cube, start, stop=None):
     if stop:
         istop = time_near(cube, stop)
         if istart == istop:
-            raise ValueError('istart must be different from istop! '
-                             'Got istart {!r} and '
-                             ' istop {!r}'.format(istart, istop))
+            raise ValueError(
+                f'istart must be different from istop! '
+                f'Got istart {istart} and '
+                f' istop {istop}'
+                )
         return cube[istart:istop, ...]
     else:
         return cube[istart, ...]
@@ -287,18 +283,18 @@ def _get_indices(cube, bbox):
     Examples
     --------
     >>> import iris
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> bbox = [-87.40, 24.25, -74.70, 36.70]
     >>> idxs = _get_indices(cube, bbox)
     >>> [isinstance(idx, np.integer) for idx in idxs]
     [True, True, True, True]
     >>> idxs
-    (27, 320, 164, 429)
+    (180, 335, 119, 250)
 
     """
-    from oceans import wrap_lon180
+    from oceans.ocfis import wrap_lon180
     lons = cube.coord('longitude').points
     lats = cube.coord('latitude').points
     lons = wrap_lon180(lons)
@@ -323,8 +319,8 @@ def bbox_extract_2Dcoords(cube, bbox):
     Examples
     --------
     >>> import iris
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> bbox = [-87.40, 24.25, -74.70, 36.70]
     >>> new_cube = bbox_extract_2Dcoords(cube, bbox)
@@ -388,9 +384,11 @@ def subset(cube, bbox):
           cube.coord(axis='Y').ndim == 2):
         cube = bbox_extract_2Dcoords(cube, bbox)
     else:
-        msg = "Cannot deal with X:{!r} and Y:{!r} dimensions."
-        raise CoordinateMultiDimError(msg.format(cube.coord(axis='X').ndim),
-                                      cube.coord(axis='y').ndim)
+        raise CoordinateMultiDimError(
+            f'Cannot deal with '
+            f'X:{cube.coord(axis="X").ndim} and '
+            f'Y:{cube.coord(axis="y").ndim} dimensions.'
+        )
     return cube
 
 
@@ -416,8 +414,8 @@ def quick_load_cubes(url, name_list, callback=None, strict=False):
     Examples
     --------
     >>> import iris
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> name_list = ['sea_water_potential_temperature']
     >>> cubes = quick_load_cubes(url, name_list)
     >>> cube = quick_load_cubes(url, name_list, strict=True)
@@ -431,13 +429,12 @@ def quick_load_cubes(url, name_list, callback=None, strict=False):
     cubes = CubeList([cube for cube in cubes if _in_list(cube, name_list)])
     cubes = _filter_none(cubes)
     if not cubes:
-        raise ValueError('Cannot find {!r} in {}.'.format(name_list, url))
+        raise ValueError(f'Cannot find {name_list} in {url}.')
     if strict:
         if len(cubes) == 1:
             return cubes[0]
         else:
-            msg = "> 1 cube found!  Expected just one.\n {!r}".format
-        raise ValueError(msg(cubes))
+            ValueError(f'> 1 cube found! Expected just one.\n {repr(cubes)}')
     return cubes
 
 
@@ -451,8 +448,8 @@ def proc_cube(cube, bbox=None, time=None, constraint=None, units=None):
     >>> import pytz
     >>> import iris
     >>> from datetime import date, datetime, timedelta
-    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/'
-    ...        'SABGOM_Forecast_Model_Run_Collection_best.ncd')
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> today = date.today().timetuple()
     >>> stop = datetime(today.tm_year, today.tm_mon, today.tm_mday, 12)
     >>> start = stop - timedelta(days=7)
@@ -467,19 +464,20 @@ def proc_cube(cube, bbox=None, time=None, constraint=None, units=None):
     if constraint:
         cube = cube.extract(constraint)
         if not cube:
-            raise ValueError('No cube using {!r}'.format(constraint))
+            raise ValueError(f'No cube using {constraint}')
     if bbox:
         cube = subset(cube, bbox)
         if not cube:
-            raise ValueError('No cube using {!r}'.format(bbox))
+            raise ValueError(f'No cube using {bbox}')
     if time:
         if isinstance(time, datetime):
             start, stop = time, None
         elif isinstance(time, tuple):
             start, stop = time[0], time[1]
         else:
-            raise ValueError('Time must be start or (start, stop).'
-                             '  Got {!r}'.format(time))
+            raise ValueError(
+                f'Time must be start or (start, stop).'
+                '  Got {time}')
         cube = time_slice(cube, start, stop)
     if units:
         if cube.units != units:
@@ -510,13 +508,13 @@ def ensure_timeseries(cube):
         ]
 
     cube.attributes.update({'featureType': 'timeSeries'})
-    cube.coord("station_code").attributes = dict(cf_role='timeseries_id')
+    cube.coord('station_code').attributes = {'cf_role': 'timeseries_id'}
     return cube
 
 
 def add_station(cube, station):
     """Add a station Auxiliary Coordinate and its name."""
-    kw = dict(var_name="station", long_name="station_code")
+    kw = {'var_name': 'station', 'long_name': 'station_code'}
     coord = iris.coords.AuxCoord(station, **kw)
     cube.add_aux_coord(coord)
     return cube
@@ -531,8 +529,8 @@ def remove_ssh(cube):
     Examples
     --------
     >>> import iris
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> cube = get_surface(cube)
     >>> len(cube.coords())
@@ -560,17 +558,17 @@ def cube2series(cube):
     index = time.units.num2date(time.points)
     data = cube.data.squeeze()
     series = pd.Series(data=data, index=index)
-    series._metadata = dict(
-        station=cube.coord('station').points[0],
-        station_name=cube.coord('station_name').points[0],
-        station_code=cube.coord('station_code').points[0],
-        sensor=cube.coord('sensor').points[0],
-        lon=cube.coord('lon').points[0],
-        lat=cube.coord('lat').points[0],
-        depth=cube.coord('depth').points[0],
-        standard_name=cube.standard_name,
-        units=cube.units
-        )
+    series._metadata = {
+        'station': cube.coord('station').points[0],
+        'station_name': cube.coord('station_name').points[0],
+        'station_code': cube.coord('station_code').points[0],
+        'sensor': cube.coord('sensor').points[0],
+        'lon': cube.coord('lon').points[0],
+        'lat': cube.coord('lat').points[0],
+        'depth': cube.coord('depth').points[0],
+        'standard_name': cube.standard_name,
+        'units': cube.units,
+        }
     return series
 
 
@@ -653,7 +651,7 @@ def _add_iris_coord(cube, name, points, dim, units=None, aux=False):
     # Convert datetime objects to Iris' current datetime representation.
     if isinstance(points, np.ndarray) and points.dtype == object:
         dt_types = (datetime, cftime.datetime)
-        if all([isinstance(i, dt_types) for i in points]):
+        if all((isinstance(i, dt_types) for i in points)):
             points = units.date2num(points)
 
     points = np.array(points)
@@ -676,9 +674,8 @@ def make_tree(cube):
     Examples
     --------
     >>> import iris
-    >>> from scipy.spatial import cKDTree as KDTree
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> cube = get_surface(cube)
     >>> tree, lon, lat = make_tree(cube)
@@ -720,8 +717,8 @@ def get_nearest_series(cube, tree, xi, yi, k=10, max_dist=0.04):
     --------
     >>> import iris
     >>> from scipy.spatial import cKDTree as KDTree
-    >>> url = ("http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/"
-    ...        "SABGOM_Forecast_Model_Run_Collection_best.ncd")
+    >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/'
+    ...        'fmrc/us_east/US_East_Forecast_Model_Run_Collection_best.ncd')
 
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
     >>> cube = get_surface(cube)
@@ -742,13 +739,12 @@ def get_nearest_series(cube, tree, xi, yi, k=10, max_dist=0.04):
     """
     distances, indices = tree.query(np.array([xi, yi]).T, k=k)
     if indices.size == 0:
-        raise ValueError("No data found.")
+        raise ValueError('No data found.')
     # Get data up to specified distance.
     mask = distances <= max_dist
     distances, indices = distances[mask], indices[mask]
     if distances.size == 0:
-        msg = "No data near ({}, {}) max_dist={}.".format
-        raise ValueError(msg(xi, yi, max_dist))
+        raise ValueError(f'No data near ({xi}, {yi}) max_dist={max_dist}.')
     # Unstructured model.
     if (cube.coord(axis='X').ndim == 1) and (cube.ndim == 2):
         i = j = indices
@@ -765,7 +761,7 @@ def get_nearest_series(cube, tree, xi, yi, k=10, max_dist=0.04):
     series, dist, idx = None, None, None
     IJs = list(zip(i, j))
     for dist, idx in zip(distances, IJs):
-        idx = tuple([int(kk) for kk in idx])
+        idx = tuple((int(kk) for kk in idx))
         if unstructured:  # NOTE: This would be so elegant in py3k!
             idx = (idx[0],)
         # This weird syntax allow for idx to be len 1 or 2.
@@ -780,13 +776,12 @@ def get_nearest_water(cube, tree, xi, yi, k=10, max_dist=0.04, min_var=0.01):
     """
     distances, indices = tree.query(np.array([xi, yi]).T, k=k)
     if indices.size == 0:
-        raise ValueError("No data found.")
+        raise ValueError('No data found.')
     # Get data up to specified distance.
     mask = distances <= max_dist
     distances, indices = distances[mask], indices[mask]
     if distances.size == 0:
-        msg = "No data near ({}, {}) max_dist={}.".format
-        raise ValueError(msg(xi, yi, max_dist))
+        raise ValueError(f'No data near ({xi}, {yi}) max_dist={max_dist}.')
     # Unstructured model.
     if (cube.coord(axis='X').ndim == 1) and (cube.ndim == 2):
         i = j = indices
@@ -802,7 +797,7 @@ def get_nearest_water(cube, tree, xi, yi, k=10, max_dist=0.04, min_var=0.01):
             i, j = np.unravel_index(indices, shape)
     IJs = list(zip(i, j))
     for dist, idx in zip(distances, IJs):
-        idx = tuple([int(kk) for kk in idx])
+        idx = tuple((int(kk) for kk in idx))
         if unstructured:  # NOTE: This would be so elegant in py3k!
             idx = (idx[0],)
         # This weird syntax allow for idx to be len 1 or 2.
@@ -813,8 +808,3 @@ def get_nearest_water(cube, tree, xi, yi, k=10, max_dist=0.04, min_var=0.01):
             series = None
             continue
     return series, dist, idx
-
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()

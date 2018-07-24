@@ -1,7 +1,6 @@
-from __future__ import absolute_import, division, print_function
+import matplotlib.pyplot as plt
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 __all__ = ['TaylorDiagram']
@@ -40,7 +39,9 @@ class TaylorDiagram(object):
         rlocs = np.concatenate((np.arange(10)/10., [0.95, 0.99]))
         tlocs = np.arccos(rlocs)  # Conversion to polar angles.
         gl1 = grid_finder.FixedLocator(tlocs)  # Positions.
-        dict_formatter = dict(list(zip(tlocs, map(str, rlocs))))
+        dict_formatter = {
+            list(zip(tlocs, map(str, rlocs)))
+            }
         tf1 = grid_finder.DictFormatter(dict_formatter)
 
         # Standard deviation axis extent.
@@ -63,20 +64,20 @@ class TaylorDiagram(object):
         fig.add_subplot(ax)
 
         # Adjust axes.
-        ax.axis["top"].set_axis_direction("bottom")  # "Angle axis".
-        ax.axis["top"].toggle(ticklabels=True, label=True)
-        ax.axis["top"].major_ticklabels.set_axis_direction("top")
-        ax.axis["top"].label.set_axis_direction("top")
-        ax.axis["top"].label.set_text("Correlation")
+        ax.axis['top'].set_axis_direction('bottom')  # Angle axis.
+        ax.axis['top'].toggle(ticklabels=True, label=True)
+        ax.axis['top'].major_ticklabels.set_axis_direction('top')
+        ax.axis['top'].label.set_axis_direction('top')
+        ax.axis['top'].label.set_text('Correlation')
 
-        ax.axis["left"].set_axis_direction("bottom")  # "X axis".
-        ax.axis["left"].label.set_text("Standard deviation")
+        ax.axis['left'].set_axis_direction('bottom')  # X axis.
+        ax.axis['left'].label.set_text('Standard deviation')
 
-        ax.axis["right"].set_axis_direction("top")  # "Y axis".
-        ax.axis["right"].toggle(ticklabels=True)
-        ax.axis["right"].major_ticklabels.set_axis_direction("left")
+        ax.axis['right'].set_axis_direction('top')  # Y axis.
+        ax.axis['right'].toggle(ticklabels=True)
+        ax.axis['right'].major_ticklabels.set_axis_direction('left')
 
-        ax.axis["bottom"].set_visible(False)  # Useless.
+        ax.axis['bottom'].set_visible(False)  # Useless.
 
         # Contours along standard deviations.
         ax.grid(False)
@@ -138,19 +139,26 @@ if __name__ == '__main__':
 
     ax1 = fig.add_subplot(1, 2, 1, xlabel='X', ylabel='Y')
     # Taylor diagram.
-    dia = TaylorDiagram(refstd, fig=fig, rect=122, label="Reference")
+    dia = TaylorDiagram(refstd, fig=fig, rect=122, label='Reference')
 
     colors = plt.matplotlib.cm.jet(np.linspace(0, 1, len(samples)))
 
     ax1.plot(x, data, 'ko', label='Data')
+    prop = {'size': 'small'}
     for k, m in enumerate([m1, m2, m3]):
         ax1.plot(x, m, c=colors[k], label='Model %d' % (k+1))
-    ax1.legend(numpoints=1, prop=dict(size='small'), loc='best')
+    ax1.legend(numpoints=1, prop=prop, loc='best')
 
     # Add samples to Taylor diagram.
     for k, (stddev, corrcoef) in enumerate(samples):
-        dia.add_sample(stddev, corrcoef, marker='s', ls='', c=colors[k],
-                       label="Model %d" % (k+1))
+        dia.add_sample(
+            stddev,
+            corrcoef,
+            marker='s',
+            ls='',
+            c=colors[k],
+            label=f'Model {k+1}'
+            )
 
     # Add RMS contours, and label them.
     contours = dia.add_contours(colors='0.5')
@@ -159,5 +167,5 @@ if __name__ == '__main__':
     # Add a figure legend.
     fig.legend(dia.samplePoints,
                [p.get_label() for p in dia.samplePoints],
-               numpoints=1, prop=dict(size='small'), loc='upper right')
+               numpoints=1, prop=prop, loc='upper right')
     plt.show()

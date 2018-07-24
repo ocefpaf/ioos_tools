@@ -1,0 +1,48 @@
+language: python
+
+sudo: false
+
+matrix:
+  fast_finish: true
+  include:
+  - python: 3.6
+    env: TEST_TARGET=default
+  - python: 3.6
+    env: TEST_TARGET=coding_standards
+
+before_install:
+  - wget http://bit.ly/miniconda -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda config --set always_yes yes --set changeps1 no --set show_channel_urls true
+  - conda update conda
+  - conda config --add channels conda-forge --force
+  - conda create --name TEST python=$TRAVIS_PYTHON_VERSION --file requirements.txt --file requirements-dev.txt
+  - source activate TEST
+
+install:
+  - python setup.py sdist && version=$(python setup.py --version) && pushd dist && pip install ioos_tools-${version}.tar.gz && popd
+
+script:
+    - if [[ $TEST_TARGET == 'default' ]]; then
+        pytest -vv ioos_tools --doctest-modules ;
+      fi
+
+  - if [[ $TEST_TARGET == 'coding_standards' ]]; then
+      flake8 --max-line-length=105 ioos_tools --exclude=_version.py ;
+    fi
+
+deploy:
+  skip_cleanup: true
+  provider: pypi
+  user: ocefpaf
+  password:
+    secure: KFPpiCEKhGD5oBvG/l7qH6l09DKovsZljx74dOokZuDiwM6BY57tAuzTkHWd3K4dWTyMtk65coOdBFoJ5ZtJZhiVzyQnLgMqTYVSRCi99LAtmuNMsvk4GI39Eg3S0RkoJexJYewcXfkGXS8TsMP+WrX8pcgfc52Yzs/BoB6leppK+wVn03XGCc7hniWw8vCanFLc2Yfj6KTE/J2v1CTk8Ays/CeU027GKpGmIQ+yBHL2Z7+sT0U7FKOsx+wOFyYzDhxF4mprnbsL+eX22xWXm6yfmI5pZkjpkfLM+WqNpFSZRI0KNExY9kRbl56uCiDGysVQFrwI8BRIbftGZw6cHBSIJPTV0iN0cmQv3UWxV8QmQwIMz1UTKB4ytWTccwDyV3FQCIitmtIBmA/rWz8ZYf4O5bHha4lWEIgBuXCkjC7uxoWTf52DFvkg1MUwQH/TecK/+22Rfi0jLnhv/J1GPL4CG8+C5GeMMDUfOi9W7mZJppSmjAOHZnM6tVgEkuzPVXQ1fCLxUIIOXCBxVqTA88Au7kqeB5IbuIsDSfhNZDU0GLpaBrRlithXqKpl0/H/iDB/CDvM+il2DR90yaPbKIqnV4Ucy7/z/sN0BUGnDtArx7qswz8H4Gjxo0szpZzNs9iGvarLis3Hbm6LjTkUN9/ljOq2UC2YaQwjO6GCYto=
+  distributions: sdist bdist_wheel
+  upload_docs: no
+  on:
+    repo: pyoceans/ioos_tools
+    tags: true
+    python: 3.6
+    all_branches: master
+    condition: '$TEST_TARGET == "default"'
