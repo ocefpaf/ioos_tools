@@ -1,27 +1,27 @@
-from __future__ import absolute_import, division, print_function
-
-import os
 import fnmatch
-
-import requests
-from retrying import retry
-import numpy as np
-import pandas as pd
+import os
+from contextlib import contextmanager
 from glob import glob
 from io import BytesIO
-try:
-    from urllib import urlopen
-    from urlparse import urlparse
-except ImportError:
-    from urllib.request import urlopen
-    from urllib.parse import urlparse
+from urllib.parse import urlparse
+from urllib.request import urlopen
 
 import iris
 from iris.pandas import as_data_frame
-from contextlib import contextmanager
+
 from lxml import etree
+
+import numpy as np
+
 from owslib import fes
 from owslib.ows import ExceptionReport
+
+import pandas as pd
+
+import requests
+
+from retrying import retry
+
 import timeout_decorator
 
 from .tardis import cube2series
@@ -30,9 +30,6 @@ from .tardis import cube2series
 Collection of functions used in the IOOS system-test exercise.
 
 """
-
-rootpath = os.path.split(__file__)[0]
-style = os.path.join(rootpath, 'data', 'style.css')
 
 
 def parse_config(config_file):
@@ -63,8 +60,10 @@ def parse_config(config_file):
     elif isinstance(start, datetime) and isinstance(stop, datetime):
         pass
     else:
-        msg = "Expect dates (YYYY-MM-DD hh:mm:ss) or days offest (int).\nGot start={} and stop={}."  # noqa
-        raise ValueError(msg.format(start, stop))
+        raise ValueError(
+            f'Expect dates (YYYY-MM-DD hh:mm:ss) or days offest (int).'
+            '\nGot start={start} and stop={stop}.'
+            )
     config['date']['start'] = start.replace(tzinfo=pytz.utc)
     config['date']['stop'] = stop.replace(tzinfo=pytz.utc)
 
@@ -82,6 +81,7 @@ def fes_date_filter(start, stop, constraint='overlaps'):
 
     Examples
     --------
+    >>> import pytz
     >>> from datetime import datetime, timedelta
     >>> stop = datetime(2010, 1, 1, 12, 30, 59).replace(tzinfo=pytz.utc)
     >>> start = stop - timedelta(days=7)
@@ -212,10 +212,10 @@ def sos_request(url='opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS', **kw):
     >>> bbox = [-87.40, 24.25, -74.70, 36.70]
     >>> sos_name = 'water_surface_height_above_reference_datum'
     >>> offering='urn:ioos:network:NOAA.NOS.CO-OPS:WaterLevelActive'
-    >>> params = dict(observedProperty=sos_name,
-    ...               eventTime=start.strftime('%Y-%m-%dT%H:%M:%SZ'),
-    ...               featureOfInterest='BBOX:{0},{1},{2},{3}'.format(*bbox),
-    ...               offering=offering)
+    >>> params = {'observedProperty': sos_name,
+    ...           'eventTime': start.strftime('%Y-%m-%dT%H:%M:%SZ'),
+    ...           'featureOfInterest': 'BBOX:{0},{1},{2},{3}'.format(*bbox),
+    ...           'offering': offering}
     >>> uri = 'http://opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS'
     >>> url = sos_request(uri, **params)
     >>> bool(urlparse(url).scheme)
@@ -224,11 +224,13 @@ def sos_request(url='opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS', **kw):
     """
     url = parse_url(url)
     offering = 'urn:ioos:network:NOAA.NOS.CO-OPS:CurrentsActive'
-    params = dict(service='SOS',
-                  request='GetObservation',
-                  version='1.0.0',
-                  offering=offering,
-                  responseFormat='text/csv')
+    params = {
+        'service': 'SOS',
+        'request': 'GetObservation',
+        'version': '1.0.0',
+        'offering': offering,
+        'responseFormat': 'text/csv'
+    }
     params.update(kw)
     r = requests.get(url, params=params)
     r.raise_for_status()
@@ -272,8 +274,7 @@ def get_coops_metadata(station):
     xml = etree.parse(urlopen(url))
     root = SensorML(xml)
     if not root.members or len(root.members) > 1:
-        msg = "Expected 1 member, got {}".format
-        raise ValueError(msg(len(root.members)))
+        raise ValueError(f'Expected 1 member, got {len(root.members)}')
     system = root.members[0]
 
     # NOTE: Some metadata of interest.
@@ -297,8 +298,9 @@ def ndbc2df(collector, ndbc_id):
     from netCDF4 import MFDataset, date2index, num2date
     # FIXME: Only sea_water_temperature for now.
     if len(collector.variables) > 1:
-        msg = "Expected only 1 variables to download, got {}".format
-        raise ValueError(msg(collector.variables))
+        raise ValueError(
+            f'Expected only 1 variable to download, got {collector.variables}'
+        )
     if collector.variables[0] == 'sea_water_temperature':
         columns = 'sea_water_temperature (C)'
         ncvar = 'sea_surface_temperature'
@@ -306,23 +308,22 @@ def ndbc2df(collector, ndbc_id):
         # adcp, adcp2, cwind, dart, mmbcur, ocean, oceansites, pwind,
         # swden, tao-ctd, wlevel, z-hycom
     else:
-        msg = "Do not know how to download {}".format
-        raise ValueError(msg(collector.variables))
+        raise ValueError(f'Do not know how to download {collector.variables}')
 
     uri = 'http://dods.ndbc.noaa.gov/thredds/dodsC/data/{}'.format(data_type)
     url = ('%s/%s/' % (uri, ndbc_id))
     urls = url_lister(url)
 
-    filetype = "*.nc"
+    filetype = '*.nc'
     file_list = [filename for filename in fnmatch.filter(urls, filetype)]
     files = [fname.split('/')[-1] for fname in file_list]
     urls = ['%s/%s/%s' % (uri, ndbc_id, fname) for fname in files]
 
     if not urls:
-        raise Exception("Cannot find data at {!r}".format(url))
+        raise Exception(f'Cannot find data at {url}')
     nc = MFDataset(urls)
 
-    kw = dict(calendar='gregorian', select='nearest')
+    kw = {'calendar': 'gregorian', 'select': 'nearest'}
     time_dim = nc.variables['time']
     time = num2date(time_dim[:], units=time_dim.units,
                     calendar=kw['calendar'])
@@ -332,9 +333,10 @@ def ndbc2df(collector, ndbc_id):
     idx_stop = date2index(collector.end_time.replace(tzinfo=None),
                           time_dim, **kw)
     if idx_start == idx_stop:
-        raise Exception("No data within time range"
-                        " {!r} and {!r}".format(collector.start_time,
-                                                collector.end_time))
+        raise Exception(
+            'No data within time range '
+            ' {collector.start_time} and {collector.end_time}'
+        )
     data = nc.variables[ncvar][idx_start:idx_stop, ...].squeeze()
 
     time_dim = nc.variables['time']
@@ -351,14 +353,14 @@ def pyoos2df(collector, station_id, df_name=None):
     """
     collector.features = [station_id]
     try:
-        response = collector.raw(responseFormat="text/csv")
-        kw = dict(parse_dates=True, index_col='date_time')
+        response = collector.raw(responseFormat='text/csv')
+        kw = {'parse_dates': True, 'index_col': 'date_time'}
         df = pd.read_csv(BytesIO(response), **kw)
     except requests.exceptions.ReadTimeout:
         df = ndbc2df(collector, station_id)
     # FIXME: Workaround to get only 1 sensor.
     df = df.reset_index()
-    kw = dict(subset='date_time', keep='last')
+    kw = {'subset': 'date_time', 'keep': 'last'}
     df = df.drop_duplicates(**kw).set_index('date_time')
     if df_name:
         df.name = df_name
@@ -391,7 +393,7 @@ def collector2table(collector, config, col='sea_water_temperature (C)'):
             return []
     df = pd.read_csv(BytesIO(response), parse_dates=True)
     g = df.groupby('station_id')
-    df = dict()
+    df = {}
     for station in g.groups.keys():
         df.update({station: g.get_group(station).iloc[0]})
     df = pd.DataFrame.from_dict(df).T
@@ -411,21 +413,21 @@ def collector2table(collector, config, col='sea_water_temperature (C)'):
         station_id = row['station_id'].split(':')[-1]
         c.features = [station_id]
         response = c.raw(responseFormat='text/csv')
-        kw = dict(parse_dates=True, index_col='date_time')
+        kw = {'parse_dates': True, 'index_col': 'date_time'}
         data = pd.read_csv(BytesIO(response), **kw).reset_index()
         data = data.drop_duplicates(subset='date_time').set_index('date_time')
         series = data[col]
-        series._metadata = dict(
-            station=row.get('station_id'),
-            station_name=row.get('name'),
-            station_code=str(row.get('station_id').split(':')[-1]),
-            sensor=row.get('sensor_id'),
-            lon=row.get('longitude (degree)'),
-            lat=row.get('latitude (degree)'),
-            depth=row.get('depth (m)'),
-            standard_name=config['sos_name'],
-            units=config['units']
-        )
+        series._metadata = {
+            'station': row.get('station_id'),
+            'station_name': row.get('name'),
+            'station_code': str(row.get('station_id').split(':')[-1]),
+            'sensor': row.get('sensor_id'),
+            'lon': row.get('longitude (degree)'),
+            'lat': row.get('latitude (degree)'),
+            'depth': row.get('depth (m)'),
+            'standard_name': config['sos_name'],
+            'units': config['units'],
+        }
 
         observations.append(series)
     return observations
@@ -459,7 +461,7 @@ def _extract_columns(name, cube):
 
 
 def secoora2df(buoys, varname):
-    secoora_obs = dict()
+    secoora_obs = {}
     for station, cube in buoys.items():
         secoora_obs.update({station: _extract_columns(station, cube)})
 
@@ -511,12 +513,12 @@ def _remove_parenthesis(word):
     """
     Examples
     --------
-    >>> _remove_parenthesis("(ROMS)")
+    >>> _remove_parenthesis('(ROMS)')
     'ROMS'
 
     """
     try:
-        return word[word.index("(") + 1:word.rindex(")")]
+        return word[word.index('(') + 1:word.rindex(')')]
     except ValueError:
         return word
 
@@ -549,7 +551,7 @@ def get_model_name(url):
     >>> url = ('http://omgsrv1.meas.ncsu.edu:8080/thredds/dodsC/fmrc/sabgom/'
     ...        'SABGOM_Forecast_Model_Run_Collection_best.ncd')
     >>> get_model_name(url)
-    'fmrc-SABGOM_Forecast_Model_Run_Collection_best.nc'
+    'fmrc-SABGOM_Forecast_Model_Run_Collection_best'
 
     """
     names = url.split('dodsC/')[-1].split('/')
@@ -629,8 +631,8 @@ def load_ncs(config):
         obs.name = obs._metadata.get('station_code')
     ALL_OBS_DATA = pd.DataFrame(observations).T
 
-    dfs = dict(OBS_DATA=ALL_OBS_DATA)
-    for fname in glob(os.path.join(config['run_name'], "*.nc")):
+    dfs = {'OBS_DATA': ALL_OBS_DATA}
+    for fname in glob(os.path.join(config['run_name'], '*.nc')):
         if 'OBS_DATA' in fname:
             continue
         else:
@@ -638,12 +640,12 @@ def load_ncs(config):
             df = nc2df(fname, columns_name='station_code')
             # FIXME: Horrible work around duplicate times.
             if len(df.index.values) != len(np.unique(df.index.values)):
-                kw = dict(subset='index', take_last=True)
+                kw = {'subset': 'index', 'take_last': True}
                 df = df.reset_index().drop_duplicates(**kw).set_index('index')
-            kw = dict(method='time', limit=2)
+            kw = {'method': 'time', 'limit': 2}
             df = df.reindex(index).interpolate(**kw).ix[index]
             dfs.update({model: df})
-    kw = dict(orient='items', intersect=False)
+    kw = {'orient': 'items', 'intersect': False}
     dfs = pd.Panel.from_dict(dfs, **kw).swapaxes(0, 2)
     return dfs
 
@@ -677,11 +679,11 @@ def parse_url(url):
 
     """
     if not urlparse(url).scheme:
-        url = "http://{}".format(url)
+        url = f'http://{url}'
     return url
 
 
-def to_html(df, css=style):
+def to_html(df, css=None):
     """
     Return a pandas table HTML representation with the datagrid css.
     Examples
@@ -695,10 +697,12 @@ def to_html(df, css=style):
 
     """
     from IPython.display import HTML
-    with open(css, 'r') as f:
-        style = """<style>{}</style>""".format(f.read())
-    table = dict(style=style, table=df.to_html())
-    return HTML('{style}<div class="datagrid">{table}</div>'.format(**table))
+    if css:
+        style = f"""<style>{css}</style>"""
+    else:
+        style = ''
+    table = {'style': style, 'table': df.to_html()}
+    return HTML(f'{style}<div class="datagrid">{table}</div>')
 
 
 def save_html(fname, HTML):
@@ -715,7 +719,7 @@ def time_limit(seconds=10):
     import signal
 
     def signal_handler(signum, frame):
-        raise TimeoutException("Timed out!")
+        raise TimeoutException('Timed out!')
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(seconds)
     try:
@@ -783,16 +787,18 @@ def make_map(bbox, **kw):
     if layers:
         add = 'MapServer/tile/{z}/{y}/{x}'
         base = 'http://services.arcgisonline.com/arcgis/rest/services'
-        ESRI = dict(Imagery='World_Imagery/MapServer',
-                    Ocean_Base='Ocean/World_Ocean_Base',
-                    Topo_Map='World_Topo_Map/MapServer',
-                    Street_Map='World_Street_Map/MapServer',
-                    Physical_Map='World_Physical_Map/MapServer',
-                    Terrain_Base='World_Terrain_Base/MapServer',
-                    NatGeo_World_Map='NatGeo_World_Map/MapServer',
-                    Shaded_Relief='World_Shaded_Relief/MapServer',
-                    Ocean_Reference='Ocean/World_Ocean_Reference',
-                    Navigation_Charts='Specialty/World_Navigation_Charts')
+        ESRI = {
+            'Imagery': 'World_Imagery/MapServer',
+            'Ocean_Base': 'Ocean/World_Ocean_Base',
+            'Topo_Map': 'World_Topo_Map/MapServer',
+            'Street_Map': 'World_Street_Map/MapServer',
+            'Physical_Map': 'World_Physical_Map/MapServer',
+            'Terrain_Base': 'World_Terrain_Base/MapServer',
+            'NatGeo_World_Map': 'NatGeo_World_Map/MapServer',
+            'Shaded_Relief': 'World_Shaded_Relief/MapServer',
+            'Ocean_Reference': 'Ocean/World_Ocean_Reference',
+            'Navigation_Charts': 'Specialty/World_Navigation_Charts'
+            }
         for name, url in ESRI.items():
             url = '{}/{}/{}'.format(base, url, add)
 

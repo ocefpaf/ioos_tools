@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+Version 1.2.1
+
+* Bugfix release
+* Added doctests
+* Major code clean ups and Python 3.6 only support
+
 Version 1.2.0
 
 * Removed iris.FUTURE, they are all toggled by default now.

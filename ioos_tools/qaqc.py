@@ -1,8 +1,7 @@
-from __future__ import absolute_import, division, print_function
-
 import numpy as np
-import pandas as pd
 import numpy.ma as ma
+
+import pandas as pd
 from pandas.tseries.frequencies import to_offset
 
 
@@ -68,7 +67,7 @@ def is_flatline(series, reps=10, eps=None):
     array([False, False, False, False, False, False, False, False, False,
            False,  True,  True,  True,  True,  True,  True,  True,  True,
             True,  True,  True,  True,  True,  True,  True, False, False,
-           False, False, False, False, False, False, False, False], dtype=bool)
+           False, False, False, False, False, False, False, False])
 
     """
     series = np.asanyarray(series)
@@ -157,10 +156,9 @@ def threshold_series(series, vmin=None, vmax=None):
     --------
     >>> series = [0.1, 20, 30, 35.5, 34.9, 43.5, 34.6, 40]
     >>> threshold_series(series, vmin=30, vmax=40)
-    masked_array(data = [-- -- 30.0 35.5 34.9 -- 34.6 40.0],
-                 mask = [ True  True False False False  True False False],
-           fill_value = 1e+20)
-    <BLANKLINE>
+    masked_array(data=[--, --, 30.0, 35.5, 34.9, --, 34.6, 40.0],
+                 mask=[ True,  True, False, False, False,  True, False, False],
+           fill_value=1e+20)
     >>> import pandas as pd
     >>> series = pd.Series(series, index=pd.date_range('1980-01-19',
     ...                    periods=len(series)))
@@ -295,8 +293,3 @@ def tukey53H(series, k=1.5):
     delta = np.abs(series-u3)
 
     return delta > k*stddev
-
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()

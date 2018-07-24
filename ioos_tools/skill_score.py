@@ -1,17 +1,7 @@
-from __future__ import absolute_import, division, print_function
-
 import numpy as np
 import numpy.ma as ma
-from pandas import DataFrame
 
-__all__ = ['both_valid',
-           'mean_bias',
-           'mean_absolute_bias',
-           'median_absolute_bias',
-           'rmse',
-           'r2',
-           'apply_skill',
-           'low_pass']
+from pandas import DataFrame
 
 
 def both_valid(x, y):
@@ -24,7 +14,7 @@ def both_valid(x, y):
     >>> x = [np.NaN, 1, 2, 3, 4, 5]
     >>> y = [0, 1, np.NaN, 3, 4, 5]
     >>> both_valid(x, y)
-    array([False,  True, False,  True,  True,  True], dtype=bool)
+    array([False,  True, False,  True,  True,  True])
 
     """
     mask_x = np.isnan(x)
@@ -68,11 +58,11 @@ def rmse(obs, model):
     >>> obs = [3, -0.5, 2, 7]
     >>> model = [2.5, 0.0, 2, 8]
     >>> rmse(obs, model)
-    0.61237243569579447
+    0.6123724356957945
     >>> obs = [[0.5, 1],[-1, 1],[7, -6]]
     >>> model = [[0, 2],[-1, 2],[8, -5]]
     >>> rmse(obs, model)
-    0.84162541153017323
+    0.8416254115301732
 
     """
     from sklearn.metrics import mean_squared_error
@@ -85,11 +75,11 @@ def r2(x, y):
 
 
 def apply_skill(dfs, function, remove_mean=True, filter_tides=False):
-    skills = dict()
+    skills = {}
     for station, df in dfs.iteritems():
         if filter_tides:
             df = df.apply(low_pass)
-        skill = dict()
+        skill = {}
         obs = df.pop('OBS_DATA')
         if obs.isnull().all():
             # No observations.
@@ -138,8 +128,3 @@ def low_pass(series, window_size=193, T=40, dt=360):
     low = np.convolve(wt, series, mode='same')
     low = ma.masked_array(low, mask)
     return low+avg
-
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
