@@ -1,15 +1,17 @@
 utilities
 =========
 
-.. image:: https://zenodo.org/badge/5715/pyoceans/utilities.svg
-   :target: https://zenodo.org/badge/latestdoi/5715/pyoceans/utilities
-   :alt: doi
-.. image:: http://img.shields.io/travis/pyoceans/utilities/master.svg?style=flat
-   :target: https://travis-ci.org/pyoceans/utilities
+.. image:: https://travis-ci.org/pyoceans/ioos_tools.svg?branch=master
+   :target: https://travis-ci.org/pyoceans/ioos_tools
    :alt: build status
-.. image:: http://img.shields.io/badge/license-MIT-blue.svg?style=flat
-   :target: https://github.com/pyoceans/utilities/blob/master/LICENSE
-   :alt: license
+.. image:: https://zenodo.org/badge/100956238.svg
+   :target: https://zenodo.org/badge/latestdoi/100956238
+   :alt: doi
+.. image:: https://img.shields.io/pypi/l/ioos_tools.svg
+   :target: https://github.com/pyoceans/ioos_tools/blob/master/LICENSE.txt
+   :alt: PyPI - License
+
+
 
 IOOS/SECOORA utilities functions.
 ---------------------------------
