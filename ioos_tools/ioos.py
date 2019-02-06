@@ -568,7 +568,7 @@ def get_model_name(url):
     return mod_name
 
 
-@timeout_decorator.timeout(10, use_signals=False)
+@timeout_decorator.timeout(20, use_signals=False)
 def is_station(url):
     from netCDF4 import Dataset
     with Dataset(url) as nc:
