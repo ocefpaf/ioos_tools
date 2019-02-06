@@ -745,7 +745,7 @@ class TimeoutException(Exception):
     ...         long_function_call()
     ... except TimeoutException as msg:
     ...     print('{!r}'.format(msg))
-    TimeoutException('Timed out!',)
+    TimeoutException('Timed out!')
     """
     pass
 
@@ -812,8 +812,7 @@ def make_map(bbox, **kw):
         p = folium.PolyLine(get_coordinates(bbox),
                             color='#FF0000',
                             weight=2,
-                            opacity=0.9,
-                            latlon=True)
+                            opacity=0.9,)
         p.add_to(m)
 
     folium.LayerControl().add_to(m)
