@@ -12,7 +12,6 @@ format:
 style: isort format
 
 docs:
-	cp notebooks/{quick_intro.ipynb,searchfor.ipynb} docs/source/
 	pushd docs && make clean html linkcheck && popd
 
 lint:
