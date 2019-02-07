@@ -1,8 +1,8 @@
 utilities
 =========
 
-.. image:: https://travis-ci.org/pyoceans/ioos_tools.svg?branch=master
-   :target: https://travis-ci.org/pyoceans/ioos_tools
+.. image:: https://travis-ci.com/pyoceans/ioos_tools.svg?branch=master
+   :target: https://travis-ci.com/pyoceans/ioos_tools
    :alt: build status
 .. image:: https://zenodo.org/badge/100956238.svg
    :target: https://zenodo.org/badge/latestdoi/100956238
