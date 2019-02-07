@@ -34,13 +34,11 @@ def is_model(cube):
     --------
     >>> import iris
     >>> iris.FUTURE.netcdf_promote = True
-    >>> url = ("http://crow.marine.usf.edu:8080/thredds/dodsC/"
-    ...        "FVCOM-Nowcast-Agg.nc")
-    >>> cubes = iris.load_raw(url, 'sea_surface_height_above_geoid')
+    >>> url = "http://thredds.cencoos.org/thredds/dodsC/CENCOOS_CA_ROMS_FCST.nc"
+    >>> cubes = iris.load_raw(url, 'sea_water_potential_temperature')
     >>> [is_model(cube) for cube in cubes]
     [True]
-    >>> url = ("http://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/archive/"
-    ...        "043p1/043p1_d17.nc")
+    >>> url = "http://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/archive/043p1/043p1_d17.nc#fillmismatch"
     >>> cubes = iris.load_raw(url, 'sea_surface_temperature')
     >>> [is_model(cube) for cube in cubes]
     [False]
@@ -339,9 +337,9 @@ def bbox_extract_1Dcoords(cube, bbox):
     Examples
     --------
     >>> import iris
-    >>> url = "http://oos.soest.hawaii.edu/thredds/dodsC/pacioos/hycom/global"
+    >>> url = "http://thredds.cencoos.org/thredds/dodsC/CENCOOS_CA_ROMS_FCST.nc"
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
-    >>> bbox = [272.6, 24.25, 285.3, 36.70]
+    >>> bbox = [230, 30, 240, 40]
     >>> new_cube = bbox_extract_1Dcoords(cube, bbox)
     >>> cube.shape != new_cube.shape
     True
@@ -362,9 +360,9 @@ def subset(cube, bbox):
     Examples
     --------
     >>> import iris
-    >>> url = "http://oos.soest.hawaii.edu/thredds/dodsC/pacioos/hycom/global"
+    >>> url = "http://thredds.cencoos.org/thredds/dodsC/CENCOOS_CA_ROMS_FCST.nc"
     >>> cube = iris.load_cube(url, 'sea_water_potential_temperature')
-    >>> bbox = [272.6, 24.25, 285.3, 36.70]
+    >>> bbox = [230, 30, 240, 40]
     >>> new_cube = subset(cube, bbox)
     >>> cube.shape != new_cube.shape
     True

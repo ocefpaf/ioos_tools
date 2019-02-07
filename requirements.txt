@@ -14,3 +14,4 @@ retrying
 scikit-learn
 scipy
 timeout-decorator
+jupyter
