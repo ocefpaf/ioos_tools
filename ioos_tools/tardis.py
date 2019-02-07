@@ -1,20 +1,15 @@
 from datetime import datetime
 
 import cf_units
-
 import cftime
-
 import iris
+import numpy as np
+import pandas as pd
 from iris import Constraint
 from iris.coords import AuxCoord, DimCoord
 from iris.cube import CubeList
 from iris.exceptions import CoordinateMultiDimError, CoordinateNotFoundError
-
-import numpy as np
-
-import pandas as pd
 from pandas.core.indexes.datetimes import DatetimeIndex
-
 from scipy.spatial import cKDTree as KDTree
 
 
@@ -46,30 +41,30 @@ def is_model(cube):
     """
     # First criteria (Strong): "forecast" word in the time coord.
     try:
-        coords = cube.coords(axis='T')
+        coords = cube.coords(axis="T")
         for coord in coords:
-            if 'forecast' in coord.name():
+            if "forecast" in coord.name():
                 return True
     except CoordinateNotFoundError:
         pass
     # Second criteria (Strong): `UGRID` cubes are models.
-    conventions = cube.attributes.get('Conventions', 'None')
-    if 'UGRID' in conventions.upper():
+    conventions = cube.attributes.get("Conventions", "None")
+    if "UGRID" in conventions.upper():
         return True
     # Third criteria (Strong): dimensionless coords are present.
     try:
-        coords = cube.coords(axis='Z')
+        coords = cube.coords(axis="Z")
         for coord in coords:
-            if 'ocean_' in coord.name():
+            if "ocean_" in coord.name():
                 return True
     except CoordinateNotFoundError:
         pass
     # Forth criteria (weak): Assumes that all "GRID" attribute are models.
-    cdm_data_type = cube.attributes.get('cdm_data_type', 'None')
-    feature_type = cube.attributes.get('featureType', 'None')
-    source = cube.attributes.get('source', 'None')
-    if cdm_data_type.upper() == 'GRID' or feature_type.upper() == 'GRID':
-        if 'AVHRR' not in source:
+    cdm_data_type = cube.attributes.get("cdm_data_type", "None")
+    feature_type = cube.attributes.get("featureType", "None")
+    source = cube.attributes.get("source", "None")
+    if cdm_data_type.upper() == "GRID" or feature_type.upper() == "GRID":
+        if "AVHRR" not in source:
             return True
     return False
 
@@ -93,34 +88,37 @@ def z_coord(cube):
     """
     # http://cfconventions.org/cf-conventions/v1.6.0/cf-conventions.html#dimensionless-v-coord
     dimensionless = [
-        'atmosphere_hybrid_height_coordinate',
-        'atmosphere_hybrid_sigma_pressure_coordinate',
-        'atmosphere_sigma_coordinate',
-        'atmosphere_sleve_coordinate',
-        'ocean_s_coordinate',
-        'ocean_s_coordinate_g1',
-        'ocean_s_coordinate_g2',
-        'ocean_sigma_coordinate',
-        'ocean_sigma_z_coordinate'
-        ]
+        "atmosphere_hybrid_height_coordinate",
+        "atmosphere_hybrid_sigma_pressure_coordinate",
+        "atmosphere_sigma_coordinate",
+        "atmosphere_sleve_coordinate",
+        "ocean_s_coordinate",
+        "ocean_s_coordinate_g1",
+        "ocean_s_coordinate_g2",
+        "ocean_sigma_coordinate",
+        "ocean_sigma_z_coordinate",
+    ]
 
     # Setting `dim_coords=True` to avoid triggering the download
     # of the derived `z`. That usually throws a Memory error as it
     # varies with `t`, `x`, `y`, and `z`.
-    zvars = cube.coords(axis='Z', dim_coords=True)
+    zvars = cube.coords(axis="Z", dim_coords=True)
     if not zvars:
-        zvars = cube.coords(axis='altitude', dim_coords=True)
+        zvars = cube.coords(axis="altitude", dim_coords=True)
 
     # Could not find a dimension coordinate.
     if not zvars:
-        zvars = [coord for coord in cube.coords(axis='Z')
-                 if coord.name() in dimensionless]
+        zvars = [
+            coord
+            for coord in cube.coords(axis="Z")
+            if coord.name() in dimensionless
+        ]
 
     if not zvars:
-        raise ValueError(f'Could not find the vertical coordinate!')
+        raise ValueError(f"Could not find the vertical coordinate!")
 
     if len(zvars) > 1:
-        raise ValueError(f'Found more than one vertical coordinate: {zvars}')
+        raise ValueError(f"Found more than one vertical coordinate: {zvars}")
     else:
         zvar = zvars[0]
 
@@ -135,7 +133,7 @@ def _get_surface_idx(cube):
     """
     z = z_coord(cube)
     if not z:
-        raise ValueError(f'Cannot find the surface for cube {repr(cube)}')
+        raise ValueError(f"Cannot find the surface for cube {repr(cube)}")
     else:
         if np.argmin(z.shape) == 0 and z.ndim == 2:
             points = z[:, 0].points
@@ -143,15 +141,15 @@ def _get_surface_idx(cube):
             points = z[0, :].points
         else:
             points = z.points
-        positive = z.attributes.get('positive', None)
-        if positive == 'up':
+        positive = z.attributes.get("positive", None)
+        if positive == "up":
             idx = np.unique(points.argmax(axis=0))[0]
         else:
             idx = np.unique(points.argmin(axis=0))[0]
         return idx
 
 
-def get_surface(cube, conventions='None'):
+def get_surface(cube, conventions="None"):
     """
     Work around `iris.cube.Cube.slices` error:
     The requested coordinates are not orthogonal.
@@ -168,21 +166,21 @@ def get_surface(cube, conventions='None'):
     True
 
     """
-    conventions = cube.attributes.get('Conventions', conventions)
+    conventions = cube.attributes.get("Conventions", conventions)
 
     # Short-circuit if cube does not have a z-axis.
-    if 'UGRID' not in conventions.upper() and cube.ndim == 3:
+    if "UGRID" not in conventions.upper() and cube.ndim == 3:
         return cube
-    if 'UGRID' in conventions.upper() and cube.ndim == 2:
+    if "UGRID" in conventions.upper() and cube.ndim == 2:
         return cube
 
     idx = _get_surface_idx(cube)
-    if cube.ndim == 4 or 'UGRID' in conventions.upper():
+    if cube.ndim == 4 or "UGRID" in conventions.upper():
         return cube[:, int(idx), ...]
-    elif cube.ndim == 3 and 'UGRID' not in conventions.upper():
+    elif cube.ndim == 3 and "UGRID" not in conventions.upper():
         return cube[int(idx), ...]
     else:
-        raise ValueError(f'Cannot find the surface for cube {repr(cube)}')
+        raise ValueError(f"Cannot find the surface for cube {repr(cube)}")
 
 
 def time_coord(cube):
@@ -203,13 +201,15 @@ def time_coord(cube):
 
     """
 
-    timevars = cube.coords(axis='T', dim_coords=True)
+    timevars = cube.coords(axis="T", dim_coords=True)
     if not timevars:
-        timevars = [coord for coord in cube.dim_coords if 'time' in coord.name()]  # noqa
+        timevars = [
+            coord for coord in cube.dim_coords if "time" in coord.name()
+        ]  # noqa
         if not timevars:
             ValueError(f'Could not find "time" in {repr(cube.dim_coords)}')
     if len(timevars) != 1:
-        raise ValueError('Found more than one time coordinates!')
+        raise ValueError("Found more than one time coordinates!")
     timevar = timevars[0]
     return timevar
 
@@ -261,10 +261,10 @@ def time_slice(cube, start, stop=None):
         istop = time_near(cube, stop)
         if istart == istop:
             raise ValueError(
-                f'istart must be different from istop! '
-                f'Got istart {istart} and '
-                f' istop {istop}'
-                )
+                f"istart must be different from istop! "
+                f"Got istart {istart} and "
+                f" istop {istop}"
+            )
         return cube[istart:istop, ...]
     else:
         return cube[istart, ...]
@@ -293,18 +293,19 @@ def _get_indices(cube, bbox):
 
     """
     from oceans.ocfis import wrap_lon180
-    lons = cube.coord('longitude').points
-    lats = cube.coord('latitude').points
+
+    lons = cube.coord("longitude").points
+    lats = cube.coord("latitude").points
     lons = wrap_lon180(lons)
 
-    inregion = np.logical_and(np.logical_and(lons > bbox[0],
-                                             lons < bbox[2]),
-                              np.logical_and(lats > bbox[1],
-                                             lats < bbox[3]))
+    inregion = np.logical_and(
+        np.logical_and(lons > bbox[0], lons < bbox[2]),
+        np.logical_and(lats > bbox[1], lats < bbox[3]),
+    )
     region_inds = np.where(inregion)
     imin, imax = _minmax(region_inds[0])
     jmin, jmax = _minmax(region_inds[1])
-    return imin, imax+1, jmin, jmax+1
+    return imin, imax + 1, jmin, jmax + 1
 
 
 def bbox_extract_2Dcoords(cube, bbox):
@@ -368,22 +369,25 @@ def subset(cube, bbox):
     True
 
     """
-    if (cube.coord(axis='X').ndim == 1 and cube.coord(axis='Y').ndim == 1):
+    if cube.coord(axis="X").ndim == 1 and cube.coord(axis="Y").ndim == 1:
         # Workaround `cube.intersection` hanging up on FVCOM models.
-        title = cube.attributes.get('title', 'untitled')
-        featureType = cube.attributes.get('featureType', None)
-        if (('FVCOM' in title) or ('ESTOFS' in title) or
-           featureType == 'timeSeries'):
+        title = cube.attributes.get("title", "untitled")
+        featureType = cube.attributes.get("featureType", None)
+        if (
+            ("FVCOM" in title)
+            or ("ESTOFS" in title)
+            or featureType == "timeSeries"
+        ):
             cube = bbox_extract_1Dcoords(cube, bbox)
         else:
-            cube = cube.intersection(longitude=(bbox[0], bbox[2]),
-                                     latitude=(bbox[1], bbox[3]))
-    elif (cube.coord(axis='X').ndim == 2 and
-          cube.coord(axis='Y').ndim == 2):
+            cube = cube.intersection(
+                longitude=(bbox[0], bbox[2]), latitude=(bbox[1], bbox[3])
+            )
+    elif cube.coord(axis="X").ndim == 2 and cube.coord(axis="Y").ndim == 2:
         cube = bbox_extract_2Dcoords(cube, bbox)
     else:
         raise CoordinateMultiDimError(
-            f'Cannot deal with '
+            f"Cannot deal with "
             f'X:{cube.coord(axis="X").ndim} and '
             f'Y:{cube.coord(axis="y").ndim} dimensions.'
         )
@@ -427,12 +431,12 @@ def quick_load_cubes(url, name_list, callback=None, strict=False):
     cubes = CubeList([cube for cube in cubes if _in_list(cube, name_list)])
     cubes = _filter_none(cubes)
     if not cubes:
-        raise ValueError(f'Cannot find {name_list} in {url}.')
+        raise ValueError(f"Cannot find {name_list} in {url}.")
     if strict:
         if len(cubes) == 1:
             return cubes[0]
         else:
-            ValueError(f'> 1 cube found! Expected just one.\n {repr(cubes)}')
+            ValueError(f"> 1 cube found! Expected just one.\n {repr(cubes)}")
     return cubes
 
 
@@ -462,11 +466,11 @@ def proc_cube(cube, bbox=None, time=None, constraint=None, units=None):
     if constraint:
         cube = cube.extract(constraint)
         if not cube:
-            raise ValueError(f'No cube using {constraint}')
+            raise ValueError(f"No cube using {constraint}")
     if bbox:
         cube = subset(cube, bbox)
         if not cube:
-            raise ValueError(f'No cube using {bbox}')
+            raise ValueError(f"No cube using {bbox}")
     if time:
         if isinstance(time, datetime):
             start, stop = time, None
@@ -474,8 +478,8 @@ def proc_cube(cube, bbox=None, time=None, constraint=None, units=None):
             start, stop = time[0], time[1]
         else:
             raise ValueError(
-                f'Time must be start or (start, stop).'
-                '  Got {time}')
+                f"Time must be start or (start, stop)." "  Got {time}"
+            )
         cube = time_slice(cube, start, stop)
     if units:
         if cube.units != units:
@@ -489,6 +493,7 @@ def add_mesh(cube, url):
 
     """
     from pyugrid import UGrid
+
     ug = UGrid.from_ncfile(url)
     cube.mesh = ug
     cube.mesh_dimension = 1
@@ -497,22 +502,22 @@ def add_mesh(cube, url):
 
 def ensure_timeseries(cube):
     """Ensure that the cube is CF-timeSeries compliant."""
-    if not cube.coord('time').shape == cube.shape[0]:
+    if not cube.coord("time").shape == cube.shape[0]:
         cube.transpose()
         [
             iris.util.demote_dim_coord_to_aux_coord(cube, dim)
             for dim in cube.dim_coords
-            if 'time' not in dim.name()
+            if "time" not in dim.name()
         ]
 
-    cube.attributes.update({'featureType': 'timeSeries'})
-    cube.coord('station_code').attributes = {'cf_role': 'timeseries_id'}
+    cube.attributes.update({"featureType": "timeSeries"})
+    cube.coord("station_code").attributes = {"cf_role": "timeseries_id"}
     return cube
 
 
 def add_station(cube, station):
     """Add a station Auxiliary Coordinate and its name."""
-    kw = {'var_name': 'station', 'long_name': 'station_code'}
+    kw = {"var_name": "station", "long_name": "station_code"}
     coord = iris.coords.AuxCoord(station, **kw)
     cube.add_aux_coord(coord)
     return cube
@@ -542,7 +547,7 @@ def remove_ssh(cube):
         cube.remove_aux_factory(factory)
     for coord in cube.aux_coords:
         if coord.shape == cube.shape:
-            if 'time' not in coord.name():
+            if "time" not in coord.name():
                 cube.remove_coord(coord.name())
     return cube
 
@@ -552,21 +557,21 @@ def cube2series(cube):
     Take a cube data and metadata and return a rich `pandas.Series`.
 
     """
-    time = cube.coord('time')
+    time = cube.coord("time")
     index = time.units.num2date(time.points)
     data = cube.data.squeeze()
     series = pd.Series(data=data, index=index)
     series._metadata = {
-        'station': cube.coord('station').points[0],
-        'station_name': cube.coord('station_name').points[0],
-        'station_code': cube.coord('station_code').points[0],
-        'sensor': cube.coord('sensor').points[0],
-        'lon': cube.coord('lon').points[0],
-        'lat': cube.coord('lat').points[0],
-        'depth': cube.coord('depth').points[0],
-        'standard_name': cube.standard_name,
-        'units': cube.units,
-        }
+        "station": cube.coord("station").points[0],
+        "station_name": cube.coord("station_name").points[0],
+        "station_code": cube.coord("station_code").points[0],
+        "sensor": cube.coord("sensor").points[0],
+        "lon": cube.coord("lon").points[0],
+        "lat": cube.coord("lat").points[0],
+        "depth": cube.coord("depth").points[0],
+        "standard_name": cube.standard_name,
+        "units": cube.units,
+    }
     return series
 
 
@@ -585,55 +590,79 @@ def series2cube(series, attr=None):
     data = np.ma.masked_invalid(series.values)
     cube = iris.cube.Cube(
         data=np.atleast_2d(data),
-        standard_name=series._metadata['standard_name'],
-        units=series._metadata['units'])
+        standard_name=series._metadata["standard_name"],
+        units=series._metadata["units"],
+    )
     if attr:
         cube.attributes.update(attr)
 
-    _add_iris_coord(cube,
-                    name='time',
-                    points=series.index,
-                    dim=1,
-                    units=cf_units.Unit('hours since epoch',
-                                        calendar=cf_units.CALENDAR_GREGORIAN))
+    _add_iris_coord(
+        cube,
+        name="time",
+        points=series.index,
+        dim=1,
+        units=cf_units.Unit(
+            "hours since epoch", calendar=cf_units.CALENDAR_GREGORIAN
+        ),
+    )
 
-    _add_iris_coord(cube,
-                    name='depth',
-                    points=np.float_(series._metadata['depth']),
-                    dim=0,
-                    units=cf_units.Unit('m'))
+    _add_iris_coord(
+        cube,
+        name="depth",
+        points=np.float_(series._metadata["depth"]),
+        dim=0,
+        units=cf_units.Unit("m"),
+    )
 
-    _add_iris_coord(cube,
-                    name='station_code',
-                    points=str(series._metadata['station_code']),
-                    dim=0, aux=True)
+    _add_iris_coord(
+        cube,
+        name="station_code",
+        points=str(series._metadata["station_code"]),
+        dim=0,
+        aux=True,
+    )
 
-    _add_iris_coord(cube,
-                    name='station',
-                    points=str(series._metadata['station']),
-                    dim=0, aux=True)
+    _add_iris_coord(
+        cube,
+        name="station",
+        points=str(series._metadata["station"]),
+        dim=0,
+        aux=True,
+    )
 
-    _add_iris_coord(cube,
-                    name='sensor',
-                    points=str(series._metadata['sensor']),
-                    dim=0, aux=True)
+    _add_iris_coord(
+        cube,
+        name="sensor",
+        points=str(series._metadata["sensor"]),
+        dim=0,
+        aux=True,
+    )
 
-    _add_iris_coord(cube,
-                    name='station_name',
-                    points=str(series._metadata['station_name']),
-                    dim=0, aux=True)
+    _add_iris_coord(
+        cube,
+        name="station_name",
+        points=str(series._metadata["station_name"]),
+        dim=0,
+        aux=True,
+    )
 
-    _add_iris_coord(cube,
-                    name='lon',
-                    points=np.float_(series._metadata['lon']),
-                    units=cf_units.Unit('degrees'),
-                    dim=0, aux=True)
+    _add_iris_coord(
+        cube,
+        name="lon",
+        points=np.float_(series._metadata["lon"]),
+        units=cf_units.Unit("degrees"),
+        dim=0,
+        aux=True,
+    )
 
-    _add_iris_coord(cube,
-                    name='lat',
-                    points=np.float_(series._metadata['lat']),
-                    units=cf_units.Unit('degrees'),
-                    dim=0, aux=True)
+    _add_iris_coord(
+        cube,
+        name="lat",
+        points=np.float_(series._metadata["lat"]),
+        units=cf_units.Unit("degrees"),
+        dim=0,
+        aux=True,
+    )
     return cube
 
 
@@ -681,8 +710,8 @@ def make_tree(cube):
     True
 
     """
-    lon = cube.coord(axis='X').points
-    lat = cube.coord(axis='Y').points
+    lon = cube.coord(axis="X").points
+    lat = cube.coord(axis="Y").points
     # Structured models with 1D lon, lat.
     if (lon.ndim == 1) and (lat.ndim == 1) and (cube.ndim == 3):
         lon, lat = np.meshgrid(lon, lat)
@@ -737,24 +766,26 @@ def get_nearest_series(cube, tree, xi, yi, k=10, max_dist=0.04):
     """
     distances, indices = tree.query(np.array([xi, yi]).T, k=k)
     if indices.size == 0:
-        raise ValueError('No data found.')
+        raise ValueError("No data found.")
     # Get data up to specified distance.
     mask = distances <= max_dist
     distances, indices = distances[mask], indices[mask]
     if distances.size == 0:
-        raise ValueError(f'No data near ({xi}, {yi}) max_dist={max_dist}.')
+        raise ValueError(f"No data near ({xi}, {yi}) max_dist={max_dist}.")
     # Unstructured model.
-    if (cube.coord(axis='X').ndim == 1) and (cube.ndim == 2):
+    if (cube.coord(axis="X").ndim == 1) and (cube.ndim == 2):
         i = j = indices
         unstructured = True
     # Structured model.
     else:
         unstructured = False
-        if cube.coord(axis='X').ndim == 2:  # CoordinateMultiDim
-            i, j = np.unravel_index(indices, cube.coord(axis='X').shape)
+        if cube.coord(axis="X").ndim == 2:  # CoordinateMultiDim
+            i, j = np.unravel_index(indices, cube.coord(axis="X").shape)
         else:
-            shape = (cube.coord(axis='Y').shape[0],
-                     cube.coord(axis='X').shape[0])
+            shape = (
+                cube.coord(axis="Y").shape[0],
+                cube.coord(axis="X").shape[0],
+            )
             i, j = np.unravel_index(indices, shape)
     series, dist, idx = None, None, None
     IJs = list(zip(i, j))
@@ -763,7 +794,7 @@ def get_nearest_series(cube, tree, xi, yi, k=10, max_dist=0.04):
         if unstructured:  # NOTE: This would be so elegant in py3k!
             idx = (idx[0],)
         # This weird syntax allow for idx to be len 1 or 2.
-        series = cube[(slice(None),)+idx]
+        series = cube[(slice(None),) + idx]
     return series, dist, idx
 
 
@@ -774,24 +805,26 @@ def get_nearest_water(cube, tree, xi, yi, k=10, max_dist=0.04, min_var=0.01):
     """
     distances, indices = tree.query(np.array([xi, yi]).T, k=k)
     if indices.size == 0:
-        raise ValueError('No data found.')
+        raise ValueError("No data found.")
     # Get data up to specified distance.
     mask = distances <= max_dist
     distances, indices = distances[mask], indices[mask]
     if distances.size == 0:
-        raise ValueError(f'No data near ({xi}, {yi}) max_dist={max_dist}.')
+        raise ValueError(f"No data near ({xi}, {yi}) max_dist={max_dist}.")
     # Unstructured model.
-    if (cube.coord(axis='X').ndim == 1) and (cube.ndim == 2):
+    if (cube.coord(axis="X").ndim == 1) and (cube.ndim == 2):
         i = j = indices
         unstructured = True
     # Structured model.
     else:
         unstructured = False
-        if cube.coord(axis='X').ndim == 2:  # CoordinateMultiDim
-            i, j = np.unravel_index(indices, cube.coord(axis='X').shape)
+        if cube.coord(axis="X").ndim == 2:  # CoordinateMultiDim
+            i, j = np.unravel_index(indices, cube.coord(axis="X").shape)
         else:
-            shape = (cube.coord(axis='Y').shape[0],
-                     cube.coord(axis='X').shape[0])
+            shape = (
+                cube.coord(axis="Y").shape[0],
+                cube.coord(axis="X").shape[0],
+            )
             i, j = np.unravel_index(indices, shape)
     IJs = list(zip(i, j))
     for dist, idx in zip(distances, IJs):
@@ -799,7 +832,7 @@ def get_nearest_water(cube, tree, xi, yi, k=10, max_dist=0.04, min_var=0.01):
         if unstructured:  # NOTE: This would be so elegant in py3k!
             idx = (idx[0],)
         # This weird syntax allow for idx to be len 1 or 2.
-        series = cube[(slice(None),)+idx]
+        series = cube[(slice(None),) + idx]
         if is_water(series, min_var=0.01):
             break
         else:

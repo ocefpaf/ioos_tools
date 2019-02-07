@@ -7,24 +7,18 @@ from urllib.parse import urlparse
 from urllib.request import urlopen
 
 import iris
-from iris.pandas import as_data_frame
-
-from lxml import etree
-
 import numpy as np
-
+import pandas as pd
+import requests
+import timeout_decorator
+from iris.pandas import as_data_frame
+from lxml import etree
 from owslib import fes
 from owslib.ows import ExceptionReport
-
-import pandas as pd
-
-import requests
-
 from retrying import retry
 
-import timeout_decorator
-
 from .tardis import cube2series
+
 
 """
 Collection of functions used in the IOOS system-test exercise.
@@ -40,19 +34,19 @@ def parse_config(config_file):
     import pytz
     import cf_units
 
-    with open(config_file, 'r') as f:
+    with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 
     # Dates are normalized to UTC.
-    start = config['date']['start']
-    stop = config['date']['stop']
+    start = config["date"]["start"]
+    stop = config["date"]["stop"]
     if isinstance(start, int) and isinstance(stop, int):
         start = datetime.combine(
             date.today() - timedelta(days=abs(start)), datetime.min.time()
-            )
+        )
         stop = datetime.combine(
             date.today() + timedelta(days=abs(stop)), datetime.min.time()
-            )
+        )
     elif isinstance(start, int) and isinstance(stop, datetime):
         start = stop - timedelta(days=abs(start))
     elif isinstance(start, datetime) and isinstance(stop, int):
@@ -61,19 +55,19 @@ def parse_config(config_file):
         pass
     else:
         raise ValueError(
-            f'Expect dates (YYYY-MM-DD hh:mm:ss) or days offest (int).'
-            '\nGot start={start} and stop={stop}.'
-            )
-    config['date']['start'] = start.replace(tzinfo=pytz.utc)
-    config['date']['stop'] = stop.replace(tzinfo=pytz.utc)
+            f"Expect dates (YYYY-MM-DD hh:mm:ss) or days offest (int)."
+            "\nGot start={start} and stop={stop}."
+        )
+    config["date"]["start"] = start.replace(tzinfo=pytz.utc)
+    config["date"]["stop"] = stop.replace(tzinfo=pytz.utc)
 
     # Units.
-    config['units'] = cf_units.Unit(config['units'])
+    config["units"] = cf_units.Unit(config["units"])
 
     return config
 
 
-def fes_date_filter(start, stop, constraint='overlaps'):
+def fes_date_filter(start, stop, constraint="overlaps"):
     """
     Take datetime-like objects and returns a fes filter for date range
     (begin and end inclusive).
@@ -97,24 +91,28 @@ def fes_date_filter(start, stop, constraint='overlaps'):
     ('ogc:PropertyIsGreaterThanOrEqualTo', 'ogc:PropertyIsLessThanOrEqualTo')
 
     """
-    start = start.strftime('%Y-%m-%d %H:00')
-    stop = stop.strftime('%Y-%m-%d %H:00')
-    if constraint == 'overlaps':
-        propertyname = 'apiso:TempExtent_begin'
-        begin = fes.PropertyIsLessThanOrEqualTo(propertyname=propertyname,
-                                                literal=stop)
-        propertyname = 'apiso:TempExtent_end'
-        end = fes.PropertyIsGreaterThanOrEqualTo(propertyname=propertyname,
-                                                 literal=start)
-    elif constraint == 'within':
-        propertyname = 'apiso:TempExtent_begin'
-        begin = fes.PropertyIsGreaterThanOrEqualTo(propertyname=propertyname,
-                                                   literal=start)
-        propertyname = 'apiso:TempExtent_end'
-        end = fes.PropertyIsLessThanOrEqualTo(propertyname=propertyname,
-                                              literal=stop)
+    start = start.strftime("%Y-%m-%d %H:00")
+    stop = stop.strftime("%Y-%m-%d %H:00")
+    if constraint == "overlaps":
+        propertyname = "apiso:TempExtent_begin"
+        begin = fes.PropertyIsLessThanOrEqualTo(
+            propertyname=propertyname, literal=stop
+        )
+        propertyname = "apiso:TempExtent_end"
+        end = fes.PropertyIsGreaterThanOrEqualTo(
+            propertyname=propertyname, literal=start
+        )
+    elif constraint == "within":
+        propertyname = "apiso:TempExtent_begin"
+        begin = fes.PropertyIsGreaterThanOrEqualTo(
+            propertyname=propertyname, literal=start
+        )
+        propertyname = "apiso:TempExtent_end"
+        end = fes.PropertyIsLessThanOrEqualTo(
+            propertyname=propertyname, literal=stop
+        )
     else:
-        raise NameError('Unrecognized constraint {}'.format(constraint))
+        raise NameError("Unrecognized constraint {}".format(constraint))
     return begin, end
 
 
@@ -129,21 +127,21 @@ def get_csw_records(csw, filter_list, pagesize=10, maxrecords=1000, **kwargs):
     from owslib.fes import SortBy, SortProperty
 
     # Iterate over sorted results.
-    sortby = SortBy([SortProperty('dc:title', 'ASC')])
+    sortby = SortBy([SortProperty("dc:title", "ASC")])
     csw_records = {}
     startposition = 0
 
-    nextrecord = getattr(csw, 'results', 1)
+    nextrecord = getattr(csw, "results", 1)
     while nextrecord != 0:
         csw.getrecords2(
             constraints=filter_list,
             startposition=startposition,
             maxrecords=pagesize,
             sortby=sortby,
-            **kwargs
-            )
+            **kwargs,
+        )
         csw_records.update(csw.records)
-        if csw.results['nextrecord'] == 0:
+        if csw.results["nextrecord"] == 0:
             break
         startposition += pagesize + 1  # Last one is included.
         if startposition >= maxrecords:
@@ -164,19 +162,19 @@ def _parse_reference(ref, identifier):
     from geolinks import sniff_link
 
     url = None
-    scheme = sniff_link(ref['url'])
+    scheme = sniff_link(ref["url"])
     if not scheme:
-        scheme = ref['scheme']
-    if identifier.endswith(':'):
+        scheme = ref["scheme"]
+    if identifier.endswith(":"):
         cond = identifier in scheme
     else:
         cond = identifier == scheme
     if cond:
-        url = ref['url']
+        url = ref["url"]
     return url
 
 
-def service_urls(records, identifier='OGC:SOS'):
+def service_urls(records, identifier="OGC:SOS"):
     """
     Extract service ULRs from csw records using geolink identifiers
     (OPeNDAP:OPeNDAP, ERDDAP:griddap, ERDDAP:tabledap, OGC:SOS, etc).
@@ -198,7 +196,7 @@ def service_urls(records, identifier='OGC:SOS'):
     return sorted(set(urls))
 
 
-def sos_request(url='opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS', **kw):
+def sos_request(url="opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS", **kw):
     """
     Examples
     --------
@@ -223,25 +221,25 @@ def sos_request(url='opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS', **kw):
 
     """
     url = parse_url(url)
-    offering = 'urn:ioos:network:NOAA.NOS.CO-OPS:CurrentsActive'
+    offering = "urn:ioos:network:NOAA.NOS.CO-OPS:CurrentsActive"
     params = {
-        'service': 'SOS',
-        'request': 'GetObservation',
-        'version': '1.0.0',
-        'offering': offering,
-        'responseFormat': 'text/csv'
+        "service": "SOS",
+        "request": "GetObservation",
+        "version": "1.0.0",
+        "offering": offering,
+        "responseFormat": "text/csv",
     }
     params.update(kw)
     r = requests.get(url, params=params)
     r.raise_for_status()
-    content = r.headers['Content-Type']
-    if 'excel' in content or 'csv' in content:
+    content = r.headers["Content-Type"]
+    if "excel" in content or "csv" in content:
         return r.url
     else:
-        raise TypeError('Bad url {}'.format(r.url))
+        raise TypeError("Bad url {}".format(r.url))
 
 
-def _get_value(sensor, name='longName'):
+def _get_value(sensor, name="longName"):
     value = None
     sml = sensor.get(name, None)
     if sml:
@@ -264,17 +262,20 @@ def get_coops_metadata(station):
 
     """
     from owslib.swe.sensor.sml import SensorML
-    url = ('opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS?'
-           'service=SOS&'
-           'request=DescribeSensor&version=1.0.0&'
-           'outputFormat=text/xml;'
-           'subtype="sensorML/1.0.1/profiles/ioos_sos/1.0"&'
-           'procedure=urn:ioos:station:NOAA.NOS.CO-OPS:%s') % station
+
+    url = (
+        "opendap.co-ops.nos.noaa.gov/ioos-dif-sos/SOS?"
+        "service=SOS&"
+        "request=DescribeSensor&version=1.0.0&"
+        "outputFormat=text/xml;"
+        'subtype="sensorML/1.0.1/profiles/ioos_sos/1.0"&'
+        "procedure=urn:ioos:station:NOAA.NOS.CO-OPS:%s"
+    ) % station
     url = parse_url(url)
     xml = etree.parse(urlopen(url))
     root = SensorML(xml)
     if not root.members or len(root.members) > 1:
-        raise ValueError(f'Expected 1 member, got {len(root.members)}')
+        raise ValueError(f"Expected 1 member, got {len(root.members)}")
     system = root.members[0]
 
     # NOTE: Some metadata of interest.
@@ -282,9 +283,9 @@ def get_coops_metadata(station):
     # short_name = _get_value(system.identifiers, name='shortName')
     # [c.values() for c in system.components]
 
-    long_name = _get_value(system.identifiers, name='longName')
-    long_name = long_name.split('station, ')[-1].strip()
-    station_id = _get_value(system.identifiers, name='stationID')
+    long_name = _get_value(system.identifiers, name="longName")
+    long_name = long_name.split("station, ")[-1].strip()
+    station_id = _get_value(system.identifiers, name="stationID")
 
     return long_name, station_id
 
@@ -296,53 +297,55 @@ def ndbc2df(collector, ndbc_id):
 
     """
     from netCDF4 import MFDataset, date2index, num2date
+
     # FIXME: Only sea_water_temperature for now.
     if len(collector.variables) > 1:
         raise ValueError(
-            f'Expected only 1 variable to download, got {collector.variables}'
+            f"Expected only 1 variable to download, got {collector.variables}"
         )
-    if collector.variables[0] == 'sea_water_temperature':
-        columns = 'sea_water_temperature (C)'
-        ncvar = 'sea_surface_temperature'
-        data_type = 'stdmet'
+    if collector.variables[0] == "sea_water_temperature":
+        columns = "sea_water_temperature (C)"
+        ncvar = "sea_surface_temperature"
+        data_type = "stdmet"
         # adcp, adcp2, cwind, dart, mmbcur, ocean, oceansites, pwind,
         # swden, tao-ctd, wlevel, z-hycom
     else:
-        raise ValueError(f'Do not know how to download {collector.variables}')
+        raise ValueError(f"Do not know how to download {collector.variables}")
 
-    uri = 'http://dods.ndbc.noaa.gov/thredds/dodsC/data/{}'.format(data_type)
-    url = ('%s/%s/' % (uri, ndbc_id))
+    uri = "http://dods.ndbc.noaa.gov/thredds/dodsC/data/{}".format(data_type)
+    url = "%s/%s/" % (uri, ndbc_id)
     urls = url_lister(url)
 
-    filetype = '*.nc'
+    filetype = "*.nc"
     file_list = [filename for filename in fnmatch.filter(urls, filetype)]
-    files = [fname.split('/')[-1] for fname in file_list]
-    urls = ['%s/%s/%s' % (uri, ndbc_id, fname) for fname in files]
+    files = [fname.split("/")[-1] for fname in file_list]
+    urls = ["%s/%s/%s" % (uri, ndbc_id, fname) for fname in files]
 
     if not urls:
-        raise Exception(f'Cannot find data at {url}')
+        raise Exception(f"Cannot find data at {url}")
     nc = MFDataset(urls)
 
-    kw = {'calendar': 'gregorian', 'select': 'nearest'}
-    time_dim = nc.variables['time']
-    time = num2date(time_dim[:], units=time_dim.units,
-                    calendar=kw['calendar'])
+    kw = {"calendar": "gregorian", "select": "nearest"}
+    time_dim = nc.variables["time"]
+    time = num2date(time_dim[:], units=time_dim.units, calendar=kw["calendar"])
 
-    idx_start = date2index(collector.start_time.replace(tzinfo=None),
-                           time_dim, **kw)
-    idx_stop = date2index(collector.end_time.replace(tzinfo=None),
-                          time_dim, **kw)
+    idx_start = date2index(
+        collector.start_time.replace(tzinfo=None), time_dim, **kw
+    )
+    idx_stop = date2index(
+        collector.end_time.replace(tzinfo=None), time_dim, **kw
+    )
     if idx_start == idx_stop:
         raise Exception(
-            'No data within time range '
-            ' {collector.start_time} and {collector.end_time}'
+            "No data within time range "
+            " {collector.start_time} and {collector.end_time}"
         )
     data = nc.variables[ncvar][idx_start:idx_stop, ...].squeeze()
 
-    time_dim = nc.variables['time']
+    time_dim = nc.variables["time"]
     time = time[idx_start:idx_stop].squeeze()
     df = pd.DataFrame(data=data, index=time, columns=[columns])
-    df.index.name = 'date_time'
+    df.index.name = "date_time"
     return df
 
 
@@ -353,22 +356,22 @@ def pyoos2df(collector, station_id, df_name=None):
     """
     collector.features = [station_id]
     try:
-        response = collector.raw(responseFormat='text/csv')
-        kw = {'parse_dates': True, 'index_col': 'date_time'}
+        response = collector.raw(responseFormat="text/csv")
+        kw = {"parse_dates": True, "index_col": "date_time"}
         df = pd.read_csv(BytesIO(response), **kw)
     except requests.exceptions.ReadTimeout:
         df = ndbc2df(collector, station_id)
     # FIXME: Workaround to get only 1 sensor.
     df = df.reset_index()
-    kw = {'subset': 'date_time', 'keep': 'last'}
-    df = df.drop_duplicates(**kw).set_index('date_time')
+    kw = {"subset": "date_time", "keep": "last"}
+    df = df.drop_duplicates(**kw).set_index("date_time")
     if df_name:
         df.name = df_name
     return df
 
 
 @retry(stop_max_attempt_number=5, wait_fixed=3000)
-def collector2table(collector, config, col='sea_water_temperature (C)'):
+def collector2table(collector, config, col="sea_water_temperature (C)"):
     """
     collector2table returns the station stable as a DataFrame.
     columns are station, sensor, lon, lat, and the index is the station
@@ -382,17 +385,19 @@ def collector2table(collector, config, col='sea_water_temperature (C)'):
     c = copy.copy(collector)
     c.features = None
     try:
-        response = c.raw(responseFormat='text/csv')
+        response = c.raw(responseFormat="text/csv")
     except ExceptionReport:
         try:
             end = c.end_time
-            response = c.filter(end=c.start_time).raw(responseFormat='text/csv')  # noqa
+            response = c.filter(end=c.start_time).raw(
+                responseFormat="text/csv"
+            )  # noqa
             c.filter(end=end)
         except ExceptionReport:
             # No data available in collection, so return an empty list.
             return []
     df = pd.read_csv(BytesIO(response), parse_dates=True)
-    g = df.groupby('station_id')
+    g = df.groupby("station_id")
     df = {}
     for station in g.groups.keys():
         df.update({station: g.get_group(station).iloc[0]})
@@ -406,27 +411,27 @@ def collector2table(collector, config, col='sea_water_temperature (C)'):
     for sta in df.index:
         names.append(station_dict.get(sta, sta))
 
-    df['name'] = names
+    df["name"] = names
 
     observations = []
     for k, row in df.iterrows():
-        station_id = row['station_id'].split(':')[-1]
+        station_id = row["station_id"].split(":")[-1]
         c.features = [station_id]
-        response = c.raw(responseFormat='text/csv')
-        kw = {'parse_dates': True, 'index_col': 'date_time'}
+        response = c.raw(responseFormat="text/csv")
+        kw = {"parse_dates": True, "index_col": "date_time"}
         data = pd.read_csv(BytesIO(response), **kw).reset_index()
-        data = data.drop_duplicates(subset='date_time').set_index('date_time')
+        data = data.drop_duplicates(subset="date_time").set_index("date_time")
         series = data[col]
         series._metadata = {
-            'station': row.get('station_id'),
-            'station_name': row.get('name'),
-            'station_code': str(row.get('station_id').split(':')[-1]),
-            'sensor': row.get('sensor_id'),
-            'lon': row.get('longitude (degree)'),
-            'lat': row.get('latitude (degree)'),
-            'depth': row.get('depth (m)'),
-            'standard_name': config['sos_name'],
-            'units': config['units'],
+            "station": row.get("station_id"),
+            "station_name": row.get("name"),
+            "station_code": str(row.get("station_id").split(":")[-1]),
+            "sensor": row.get("sensor_id"),
+            "lon": row.get("longitude (degree)"),
+            "lat": row.get("latitude (degree)"),
+            "depth": row.get("depth (m)"),
+            "standard_name": config["sos_name"],
+            "units": config["units"],
         }
 
         observations.append(series)
@@ -443,19 +448,19 @@ def _extract_columns(name, cube):
         from HTMLParser import HTMLParser
     except ImportError:
         from html.parser import HTMLParser
-    station = cube.attributes.get('abstract', None)
+    station = cube.attributes.get("abstract", None)
     if not station:
-        station = name.replace('.', '_')
+        station = name.replace(".", "_")
 
     parser = HTMLParser()
     station = parser.unescape(station)
 
-    sensor = 'NA'
-    lon = cube.coord(axis='X').points[0]
-    lat = cube.coord(axis='Y').points[0]
-    time = cube.coord(axis='T')
-    time = time.units.num2date(cube.coord(axis='T').points)[0]
-    date_time = time.strftime('%Y-%M-%dT%H:%M:%SZ')
+    sensor = "NA"
+    lon = cube.coord(axis="X").points[0]
+    lat = cube.coord(axis="Y").points[0]
+    time = cube.coord(axis="T")
+    time = time.units.num2date(cube.coord(axis="T").points)[0]
+    date_time = time.strftime("%Y-%M-%dT%H:%M:%SZ")
     data = cube.data.mean()
     return station, sensor, lat, lon, date_time, data
 
@@ -465,18 +470,20 @@ def secoora2df(buoys, varname):
     for station, cube in buoys.items():
         secoora_obs.update({station: _extract_columns(station, cube)})
 
-    df = pd.DataFrame.from_dict(secoora_obs, orient='index')
+    df = pd.DataFrame.from_dict(secoora_obs, orient="index")
     df.reset_index(inplace=True)
-    columns = {'index': 'station',
-               0: 'name',
-               1: 'sensor',
-               2: 'lat',
-               3: 'lon',
-               4: 'date_time',
-               5: varname}
+    columns = {
+        "index": "station",
+        0: "name",
+        1: "sensor",
+        2: "lat",
+        3: "lon",
+        4: "date_time",
+        5: varname,
+    }
 
     df.rename(columns=columns, inplace=True)
-    df.set_index('name', inplace=True)
+    df.set_index("name", inplace=True)
     return df
 
 
@@ -500,12 +507,13 @@ def _guess_name(model_full_name):
     for word in model_full_name.split():
         if word.isupper():
             words.append(_remove_parenthesis(word))
-    mod_name = ' '.join(words)
+    mod_name = " ".join(words)
     if not mod_name:
-        mod_name = ''.join([c for c in model_full_name.split('(')[0]
-                            if c.isupper()])
+        mod_name = "".join(
+            [c for c in model_full_name.split("(")[0] if c.isupper()]
+        )
     if len(mod_name.split()) > 1:
-        mod_name = '_'.join(mod_name.split()[:2])
+        mod_name = "_".join(mod_name.split()[:2])
     return mod_name
 
 
@@ -518,7 +526,7 @@ def _remove_parenthesis(word):
 
     """
     try:
-        return word[word.index('(') + 1:word.rindex(')')]
+        return word[word.index("(") + 1 : word.rindex(")")]
     except ValueError:
         return word
 
@@ -535,10 +543,10 @@ def _sanitize(name):
     'GG1SST_SST'
 
     """
-    name = name.replace(', ', '_')
-    name = name.replace('/', '_')
-    name = name.replace(' ', '_')
-    name = name.replace(',', '_')
+    name = name.replace(", ", "_")
+    name = name.replace("/", "_")
+    name = name.replace(" ", "_")
+    name = name.replace(",", "_")
     return name
 
 
@@ -554,32 +562,33 @@ def get_model_name(url):
     'fmrc-SABGOM_Forecast_Model_Run_Collection_best'
 
     """
-    names = url.split('dodsC/')[-1].split('/')
+    names = url.split("dodsC/")[-1].split("/")
     names, fname = names[:-1], names[-1]
     names = [name for name in names if name.lower() not in fname.lower()]
 
-    if fname.endswith('.ncd') or fname.endswith('.nc'):
-        fname = fname.rstrip('.ncd').rstrip('.nc')
+    if fname.endswith(".ncd") or fname.endswith(".nc"):
+        fname = fname.rstrip(".ncd").rstrip(".nc")
 
     if names:
-        mod_name = '{}-{}'.format('_'.join(names), fname)
+        mod_name = "{}-{}".format("_".join(names), fname)
     else:
-        mod_name = '{}'.format(fname)
+        mod_name = "{}".format(fname)
     return mod_name
 
 
 @timeout_decorator.timeout(20, use_signals=False)
 def is_station(url):
     from netCDF4 import Dataset
+
     with Dataset(url) as nc:
         station = False
-        if hasattr(nc, 'cdm_data_type'):
-            if nc.cdm_data_type.lower() == 'station':
+        if hasattr(nc, "cdm_data_type"):
+            if nc.cdm_data_type.lower() == "station":
                 station = True
     return station
 
 
-def nc2df(fname, columns_name='station_code'):
+def nc2df(fname, columns_name="station_code"):
     """
     Load a netCDF timeSeries file as a dataframe.
 
@@ -587,7 +596,7 @@ def nc2df(fname, columns_name='station_code'):
     cube = iris.load_cube(fname)
     for coord in cube.coords(dimensions=[0]):
         name = coord.name()
-        if name != 'time':
+        if name != "time":
             cube.remove_coord(name)
     for coord in cube.coords(dimensions=[1]):
         name = coord.name()
@@ -600,52 +609,58 @@ def nc2df(fname, columns_name='station_code'):
     return df
 
 
-def stations_keys(config, key='station_name'):
-    save_dir = os.path.join(os.path.abspath(config['run_name']))
-    fname = os.path.join(save_dir, '{}.nc'.format('OBS_DATA'))
+def stations_keys(config, key="station_name"):
+    save_dir = os.path.join(os.path.abspath(config["run_name"]))
+    fname = os.path.join(save_dir, "{}.nc".format("OBS_DATA"))
     cubes = iris.load_raw(fname)
     observations = [cube2series(cube) for cube in cubes]
-    return {obs._metadata['station_code']: obs._metadata[key] for
-            obs in observations}
+    return {
+        obs._metadata["station_code"]: obs._metadata[key]
+        for obs in observations
+    }
 
 
 def load_ncs(config):
-    save_dir = os.path.join(os.path.abspath(config['run_name']))
-    fname = '{}.nc'.format
-    fname = os.path.join(save_dir, fname('OBS_DATA'))
+    save_dir = os.path.join(os.path.abspath(config["run_name"]))
+    fname = "{}.nc".format
+    fname = os.path.join(save_dir, fname("OBS_DATA"))
 
     cubes = iris.load_raw(fname)
     data = [cube2series(cube) for cube in cubes]
-    index = pd.date_range(start=config['date']['start'].replace(tzinfo=None),
-                          end=config['date']['stop'].replace(tzinfo=None),
-                          freq='1H')
+    index = pd.date_range(
+        start=config["date"]["start"].replace(tzinfo=None),
+        end=config["date"]["stop"].replace(tzinfo=None),
+        freq="1H",
+    )
     # Preserve metadata with `reindex`.
     observations = []
     for series in data:
         _metadata = series._metadata
-        obs = series.reindex(index=index, limit=1, method='nearest')
+        obs = series.reindex(index=index, limit=1, method="nearest")
         obs._metadata = _metadata
         observations.append(obs)
 
     for obs in observations:
-        obs.name = obs._metadata.get('station_code')
+        obs.name = obs._metadata.get("station_code")
     ALL_OBS_DATA = pd.DataFrame(observations).T
 
-    dfs = {'OBS_DATA': ALL_OBS_DATA}
-    for fname in glob(os.path.join(config['run_name'], '*.nc')):
-        if 'OBS_DATA' in fname:
+    dfs = {"OBS_DATA": ALL_OBS_DATA}
+    for fname in glob(os.path.join(config["run_name"], "*.nc")):
+        if "OBS_DATA" in fname:
             continue
         else:
-            model = os.path.splitext(os.path.split(fname)[-1])[0].split('-')[-1]  # noqa
-            df = nc2df(fname, columns_name='station_code')
+            model = os.path.splitext(os.path.split(fname)[-1])[0].split("-")[
+                -1
+            ]  # noqa
+            df = nc2df(fname, columns_name="station_code")
             # FIXME: Horrible work around duplicate times.
             if len(df.index.values) != len(np.unique(df.index.values)):
-                kw = {'subset': 'index', 'take_last': True}
-                df = df.reset_index().drop_duplicates(**kw).set_index('index')
-            kw = {'method': 'time', 'limit': 2}
+                kw = {"subset": "index", "take_last": True}
+                df = df.reset_index().drop_duplicates(**kw).set_index("index")
+            kw = {"method": "time", "limit": 2}
             df = df.reindex(index).interpolate(**kw).ix[index]
             dfs.update({model: df})
-    kw = {'orient': 'items', 'intersect': False}
+    kw = {"orient": "items", "intersect": False}
     dfs = pd.Panel.from_dict(dfs, **kw).swapaxes(0, 2)
     return dfs
 
@@ -657,10 +672,11 @@ def url_lister(url):
 
     """
     import lxml.html
+
     urls = []
     connection = urlopen(url)
     dom = lxml.html.fromstring(connection.read())
-    for link in dom.xpath('//a/@href'):
+    for link in dom.xpath("//a/@href"):
         urls.append(link)
     return urls
 
@@ -679,7 +695,7 @@ def parse_url(url):
 
     """
     if not urlparse(url).scheme:
-        url = f'http://{url}'
+        url = f"http://{url}"
     return url
 
 
@@ -697,16 +713,17 @@ def to_html(df, css=None):
 
     """
     from IPython.display import HTML
+
     if css:
         style = f"""<style>{css}</style>"""
     else:
-        style = ''
-    table = {'style': style, 'table': df.to_html()}
+        style = ""
+    table = {"style": style, "table": df.to_html()}
     return HTML(f'{style}<div class="datagrid">{table}</div>')
 
 
 def save_html(fname, HTML):
-    with open(fname, 'w') as f:
+    with open(fname, "w") as f:
         f.writelines(HTML.data)
 
 
@@ -719,7 +736,8 @@ def time_limit(seconds=10):
     import signal
 
     def signal_handler(signum, frame):
-        raise TimeoutException('Timed out!')
+        raise TimeoutException("Timed out!")
+
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(seconds)
     try:
@@ -747,6 +765,7 @@ class TimeoutException(Exception):
     ...     print('{!r}'.format(msg))
     TimeoutException('Timed out!')
     """
+
     pass
 
 
@@ -765,54 +784,55 @@ def make_map(bbox, **kw):
     """
     import folium
 
-    line = kw.pop('line', True)
-    layers = kw.pop('layers', True)
-    hf_radar = kw.pop('hf_radar', True)
-    zoom_start = kw.pop('zoom_start', 5)
+    line = kw.pop("line", True)
+    layers = kw.pop("layers", True)
+    hf_radar = kw.pop("hf_radar", True)
+    zoom_start = kw.pop("zoom_start", 5)
 
     lon, lat = np.array(bbox).reshape(2, 2).mean(axis=0)
-    m = folium.Map(width='100%', height='100%',
-                   location=[lat, lon], zoom_start=zoom_start)
+    m = folium.Map(
+        width="100%", height="100%", location=[lat, lon], zoom_start=zoom_start
+    )
 
     if hf_radar:
-        url = 'http://hfrnet.ucsd.edu/thredds/wms/HFRNet/USEGC/6km/hourly/RTV'
-        w = folium.WmsTileLayer(url,
-                                name='HF Radar',
-                                fmt='image/png',
-                                layers='surface_sea_water_velocity',
-                                attr='HFRNet',
-                                overlay=True,
-                                transparent=True)
+        url = "http://hfrnet.ucsd.edu/thredds/wms/HFRNet/USEGC/6km/hourly/RTV"
+        w = folium.WmsTileLayer(
+            url,
+            name="HF Radar",
+            fmt="image/png",
+            layers="surface_sea_water_velocity",
+            attr="HFRNet",
+            overlay=True,
+            transparent=True,
+        )
         w.add_to(m)
     if layers:
-        add = 'MapServer/tile/{z}/{y}/{x}'
-        base = 'http://services.arcgisonline.com/arcgis/rest/services'
+        add = "MapServer/tile/{z}/{y}/{x}"
+        base = "http://services.arcgisonline.com/arcgis/rest/services"
         ESRI = {
-            'Imagery': 'World_Imagery/MapServer',
-            'Ocean_Base': 'Ocean/World_Ocean_Base',
-            'Topo_Map': 'World_Topo_Map/MapServer',
-            'Street_Map': 'World_Street_Map/MapServer',
-            'Physical_Map': 'World_Physical_Map/MapServer',
-            'Terrain_Base': 'World_Terrain_Base/MapServer',
-            'NatGeo_World_Map': 'NatGeo_World_Map/MapServer',
-            'Shaded_Relief': 'World_Shaded_Relief/MapServer',
-            'Ocean_Reference': 'Ocean/World_Ocean_Reference',
-            'Navigation_Charts': 'Specialty/World_Navigation_Charts'
-            }
+            "Imagery": "World_Imagery/MapServer",
+            "Ocean_Base": "Ocean/World_Ocean_Base",
+            "Topo_Map": "World_Topo_Map/MapServer",
+            "Street_Map": "World_Street_Map/MapServer",
+            "Physical_Map": "World_Physical_Map/MapServer",
+            "Terrain_Base": "World_Terrain_Base/MapServer",
+            "NatGeo_World_Map": "NatGeo_World_Map/MapServer",
+            "Shaded_Relief": "World_Shaded_Relief/MapServer",
+            "Ocean_Reference": "Ocean/World_Ocean_Reference",
+            "Navigation_Charts": "Specialty/World_Navigation_Charts",
+        }
         for name, url in ESRI.items():
-            url = '{}/{}/{}'.format(base, url, add)
+            url = "{}/{}/{}".format(base, url, add)
 
-            w = folium.TileLayer(tiles=url,
-                                 name=name,
-                                 attr='ESRI',
-                                 overlay=True)
+            w = folium.TileLayer(
+                tiles=url, name=name, attr="ESRI", overlay=True
+            )
             w.add_to(m)
 
     if line:  # Create the map and add the bounding box line.
-        p = folium.PolyLine(get_coordinates(bbox),
-                            color='#FF0000',
-                            weight=2,
-                            opacity=0.9,)
+        p = folium.PolyLine(
+            get_coordinates(bbox), color="#FF0000", weight=2, opacity=0.9
+        )
         p.add_to(m)
 
     folium.LayerControl().add_to(m)
@@ -842,6 +862,7 @@ def get_coordinates(bbox):
         coordinates.append([bbox[1][1], bbox[0][0]])
         coordinates.append([bbox[0][1], bbox[0][0]])
     else:
-        raise ValueError('Wrong number corners.'
-                         '  Expected 4 got {}'.format(bbox.size))
+        raise ValueError(
+            "Wrong number corners." "  Expected 4 got {}".format(bbox.size)
+        )
     return coordinates

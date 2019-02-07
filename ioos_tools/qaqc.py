@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.ma as ma
-
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
 
@@ -30,10 +29,10 @@ def has_time_gaps(times, freq):
 
     """
     freq = to_offset(freq)
-    if hasattr(freq, 'delta'):
+    if hasattr(freq, "delta"):
         times = pd.DatetimeIndex(times)
     else:
-        raise ValueError('Cannot interpret freq {!r} delta'.format(freq))
+        raise ValueError("Cannot interpret freq {!r} delta".format(freq))
     return (np.diff(times) > freq.delta.to_timedelta64()).any()
 
 
@@ -78,15 +77,15 @@ def is_flatline(series, reps=10, eps=None):
     if reps < 2:
         reps = 2
 
-    mask = np.zeros_like(series, dtype='bool')
+    mask = np.zeros_like(series, dtype="bool")
 
     flatline = 1
     for k, current in enumerate(series):
-        if np.abs(series[k-1] - current) < eps:
+        if np.abs(series[k - 1] - current) < eps:
             flatline += 1
         else:
             if flatline >= reps:
-                mask[k-flatline:k] = True
+                mask[k - flatline : k] = True
             flatline = 1
     return mask
 
@@ -116,10 +115,10 @@ def is_spike(series, window_size=3, threshold=3, scale=True):
     # bfill+ffil needs a series and won't affect the median.
     series = pd.Series(series)
     roll = series.rolling(window=window_size, center=True)
-    medians = roll.median().fillna(method='bfill').fillna(method='ffill')
+    medians = roll.median().fillna(method="bfill").fillna(method="ffill")
     difference = np.abs(series - medians).values
     if scale:
-        return difference > (threshold*difference.std())
+        return difference > (threshold * difference.std())
     return difference > threshold
 
 
@@ -143,7 +142,9 @@ def first_difference(series, quantile=0.75):
 
     """
     series = pd.Series(series)
-    abs_diffs = series.diff().abs().fillna(method='bfill').fillna(method='ffill')  # noqa
+    abs_diffs = (
+        series.diff().abs().fillna(method="bfill").fillna(method="ffill")
+    )  # noqa
     return abs_diffs > abs_diffs.quantile(quantile)
 
 
@@ -211,8 +212,9 @@ def filter_spikes(series, window_size=3, threshold=3, scale=True):
     Freq: D, dtype: float64
 
     """
-    outlier_idx = is_spike(series, window_size=window_size,
-                           threshold=threshold, scale=scale)
+    outlier_idx = is_spike(
+        series, window_size=window_size, threshold=threshold, scale=scale
+    )
     if not isinstance(series, pd.Series):
         series = np.asanyarray(series)
     series[outlier_idx] = np.NaN
@@ -244,7 +246,7 @@ def _high_pass(data, alpha=0.5):
     data = data - mean
     hpf = data.copy()
     for k in range(1, len(data)):
-        hpf[k] = alpha * hpf[k-1] + alpha * (data[k] - data[k-1])
+        hpf[k] = alpha * hpf[k - 1] + alpha * (data[k] - data[k - 1])
     return hpf + mean
 
 
@@ -278,18 +280,18 @@ def tukey53H(series, k=1.5):
     stddev = series.std()
 
     u1 = np.zeros_like(series)
-    for n in range(N-4):
-        if series[n:n+5].any():
-            u1[n+2] = np.median(series[n:n+5])
+    for n in range(N - 4):
+        if series[n : n + 5].any():
+            u1[n + 2] = np.median(series[n : n + 5])
 
     u2 = np.zeros_like(series)
-    for n in range(N-2):
-        if u1[n:n+3].any():
-            u2[n+1] = np.median(u1[n:n+3])
+    for n in range(N - 2):
+        if u1[n : n + 3].any():
+            u2[n + 1] = np.median(u1[n : n + 3])
 
     u3 = np.zeros_like(series)
-    u3[1:-1] = 0.25*(u2[:-2] + 2*u2[1:-1] + u2[2:])
+    u3[1:-1] = 0.25 * (u2[:-2] + 2 * u2[1:-1] + u2[2:])
 
-    delta = np.abs(series-u3)
+    delta = np.abs(series - u3)
 
-    return delta > k*stddev
+    return delta > k * stddev

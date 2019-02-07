@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.ma as ma
-
 from pandas import DataFrame
 
 
@@ -22,20 +21,22 @@ def both_valid(x, y):
     return np.logical_and(~mask_x, ~mask_y)
 
 
-def mean_bias(y_true, y_pred,
-              sample_weight=None,
-              multioutput='uniform_average'):
+def mean_bias(
+    y_true, y_pred, sample_weight=None, multioutput="uniform_average"
+):
     """Modified from `mean_absolute_error` to preserve the bias sign."""
     from sklearn.metrics.regression import _check_reg_targets
 
     y_type, y_true, y_pred, multioutput = _check_reg_targets(
-        y_true, y_pred, multioutput)
-    output_errors = np.average(np.abs(y_pred - y_true),
-                               weights=sample_weight, axis=0)
+        y_true, y_pred, multioutput
+    )
+    output_errors = np.average(
+        np.abs(y_pred - y_true), weights=sample_weight, axis=0
+    )
     output_errors *= np.sign(np.average(y_pred - y_true))
-    if multioutput == 'raw_values':
+    if multioutput == "raw_values":
         return output_errors
-    elif multioutput == 'uniform_average':
+    elif multioutput == "uniform_average":
         # Pass None as weights to np.average: uniform mean.
         multioutput = None
     return np.average(output_errors, weights=multioutput)
@@ -43,11 +44,13 @@ def mean_bias(y_true, y_pred,
 
 def mean_absolute_bias(obs, model):
     from sklearn.metrics import mean_absolute_error
+
     return mean_absolute_error(obs, model)
 
 
 def median_absolute_bias(obs, model):
     from sklearn.metrics import median_absolute_error
+
     return median_absolute_error(obs, model)
 
 
@@ -66,11 +69,13 @@ def rmse(obs, model):
 
     """
     from sklearn.metrics import mean_squared_error
+
     return np.sqrt(mean_squared_error(obs, model))
 
 
 def r2(x, y):
     from sklearn.metrics import r2_score
+
     return r2_score(x, y)
 
 
@@ -80,7 +85,7 @@ def apply_skill(dfs, function, remove_mean=True, filter_tides=False):
         if filter_tides:
             df = df.apply(low_pass)
         skill = {}
-        obs = df.pop('OBS_DATA')
+        obs = df.pop("OBS_DATA")
         if obs.isnull().all():
             # No observations.
             skills.update({station: np.NaN})
@@ -93,7 +98,7 @@ def apply_skill(dfs, function, remove_mean=True, filter_tides=False):
             mask = both_valid(obs, y)
             x, y = obs[mask], y[mask]
             if remove_mean:
-                x, y = x-x.mean(), y-y.mean()
+                x, y = x - x.mean(), y - y.mean()
             if x.size:
                 ret = function(x, y)
             else:
@@ -116,8 +121,9 @@ def low_pass(series, window_size=193, T=40, dt=360):
 
     """
     from oceans import lanc
-    T *= 60*60.  # To seconds.
-    freq = dt/T
+
+    T *= 60 * 60.0  # To seconds.
+    freq = dt / T
 
     mask = np.isnan(series)
     avg = series.mean()
@@ -125,6 +131,6 @@ def low_pass(series, window_size=193, T=40, dt=360):
     series.interpolate(inplace=True)
 
     wt = lanc(window_size, freq)
-    low = np.convolve(wt, series, mode='same')
+    low = np.convolve(wt, series, mode="same")
     low = ma.masked_array(low, mask)
-    return low+avg
+    return low + avg
