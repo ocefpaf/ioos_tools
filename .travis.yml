@@ -12,7 +12,6 @@ matrix:
     - name: "coding_standards"
       env: PY=3.7
 
-
 before_install:
   - wget http://bit.ly/miniconda -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
@@ -28,13 +27,12 @@ install:
 
 script:
   - if [[ $TRAVIS_JOB_NAME == "doctest" ]]; then
-      pytest -s -rxs --doctest-modules -vv ioos_tools ;
+      pytest -n 2  -rxs --doctest-modules -vv ioos_tools ;
     fi
 
-  - if [[ $TEST_TARGET == 'coding_standards' ]]; then
+  - if [[ $TRAVIS_JOB_NAME == 'coding_standards' ]]; then
       pytest --flake8 -m flake8 ;
     fi
-
 
 deploy:
   skip_cleanup: true

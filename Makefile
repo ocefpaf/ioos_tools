@@ -12,14 +12,13 @@ format:
 style: isort format
 
 docs:
-	cp notebooks/{quick_intro.ipynb,searchfor.ipynb} docs/source/
 	pushd docs && make clean html linkcheck && popd
 
 lint:
 	pytest --flake8 -m flake8
 
 test:
-	pytest -n 2 -rxs --cov=erddapy tests
+	pytest -n 2 -rxs --doctest-modules -vv ioos_tools
 
 check: style docs lint test
 	echo "All checks complete!"
