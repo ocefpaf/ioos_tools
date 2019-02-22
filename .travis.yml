@@ -33,17 +33,3 @@ script:
   - if [[ $TRAVIS_JOB_NAME == 'coding_standards' ]]; then
       pytest --flake8 -m flake8 ;
     fi
-
-deploy:
-  skip_cleanup: true
-  provider: pypi
-  user: ocefpaf
-  password:
-    secure: "EQCgreuD3ag+n2Z2WX93vUGyNHZiWftYsGIIuCKqLkglY3gHos731AQMd0YoV6tw5ECRhXp5XXrMK0Mxvsuu4fp77RTbJnWHHFvEWurbqH+qpvoJ5DCpQyJZ3Vs9YGjj1YoofY0cwcsQOSTkjh58KYb9Bam6Rw76teC9iIS4BGdBm4Z3ZQ86mlMigogBjWcfTCKP8cI0/xNEiX88qlqtU4s6r1mxjN1C2aqODC7Ifk0yXjPDIv7lFcSjMVKJKJPyTuAT9+Tvf+LjsYE7TSqae3ItT+F+3YXueiTHFRO/AcwggHcY7MEORHpSjrk5EznnI0RXmK0j/NveI2aEN6ZZ3Ec2PLio61X01OkyhNhJnxZVzm/xDy5TnWZyMLy5rh3UPrBkLDeL1YQgXGYR/Yj1NBFd+x/pEgazpFCk3b/AmHpzEQQ+kKKWVo3qT6d6+sDExkvM4ViuqocC6QdyJ6ROdljGN3g1vOIVMCYosfN+RO/wRAFMVv4CAohtp2Up3EV/Z/v6wXcmo/bWNXTO8cadG3wiy2zysgy4Fb8bZ5TZOq4luw+sw652yqRwkpQbugqa3n5m5ZbIY+z2nVmt69UIvWbjYQV1z/L4QSFPqVsalf8xZY5xDn31nCf1gBKvjZcy2VmDRPTG9909+nuooFJZKCZ9uKyHf+CM0J5Zja6Qt4A="
-  distributions: sdist bdist_wheel
-  upload_docs: no
-  on:
-    repo: pyoceans/ioos_tools
-    tags: true
-    all_branches: master
-    condition: '$TRAVIS_JOB_NAME == "default"'
