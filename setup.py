@@ -1,17 +1,14 @@
-import os
+from pathlib import Path
 
 from setuptools import find_packages, setup
 
 import versioneer
 
-rootpath = os.path.abspath(os.path.dirname(__file__))
+rootpath = Path(__file__).parent.absolute()
 
 
 def read(*parts):
-    return open(os.path.join(rootpath, *parts), "r").read()
-
-
-long_description = f'{read("README.rst")}\n{read("CHANGES.txt")}'
+    return open(rootpath.joinpath(*parts), "r").read()
 
 
 with open("requirements.txt") as f:
@@ -22,22 +19,28 @@ install_requires = [t.strip() for t in tests_require]
 setup(
     name="ioos_tools",
     version=versioneer.get_version(),
-    packages=find_packages(),
-    cmdclass=versioneer.get_cmdclass(),
-    license=f'{read("LICENSE.txt")}',
-    long_description=long_description,
-    classifiers=[
-        "Programming Language :: Python :: 3.6",
-        "Topic :: Scientific/Engineering :: Science/Research",
-        "License :: OSI Approved :: BSD License",
-        "Development Status :: 4 - Beta",
-    ],
     description="Misc functions for IOOS notebooks",
+    license="BSD-3-Clause",
+    long_description=f'{read("README.md")}',
+    long_description_content_type="text/markdown",
     author=["Rich Signell", "Filipe Fernandes"],
     author_email="ocefpaf@gmail.com",
-    url="https://github.com/pyoceans/ioos_tools/releases",
+    url="https://github.com/pyoceans/ioos_tools/",
+    keywords=["oceanography", "data analysis", "IOOS"],
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "License :: OSI Approved :: BSD License",
+        "Environment :: Console",
+        "Intended Audience :: Science/Research",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering",
+    ],
     platforms="any",
-    keywords=["oceanography", "data analysis"],
+    packages=find_packages(),
+    extras_require={"testing": ["pytest"]},
     install_requires=install_requires,
+    cmdclass=versioneer.get_cmdclass(),
     zip_safe=False,
 )
