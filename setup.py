@@ -18,6 +18,7 @@ install_requires = [t.strip() for t in tests_require]
 
 setup(
     name="ioos_tools",
+    python_requires=">=3.5",
     version=versioneer.get_version(),
     description="Misc functions for IOOS notebooks",
     license="BSD-3-Clause",
@@ -29,6 +30,7 @@ setup(
     keywords=["oceanography", "data analysis", "IOOS"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: BSD License",
