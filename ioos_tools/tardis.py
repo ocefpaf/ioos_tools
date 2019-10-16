@@ -28,7 +28,6 @@ def is_model(cube):
     Examples
     --------
     >>> import iris
-    >>> iris.FUTURE.netcdf_promote = True
     >>> url = "http://thredds.cencoos.org/thredds/dodsC/CENCOOS_CA_ROMS_FCST.nc"
     >>> cubes = iris.load_raw(url, 'sea_water_potential_temperature')
     >>> [is_model(cube) for cube in cubes]
