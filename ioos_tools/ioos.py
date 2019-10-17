@@ -535,11 +535,11 @@ def _sanitize(name):
     """
     Examples
     --------
-    >>> _sanitize('ROMS/TOMS')
+    >>> _sanitize("ROMS/TOMS")
     'ROMS_TOMS'
-    >>> _sanitize('USEAST model')
+    >>> _sanitize("USEAST model")
     'USEAST_model'
-    >>> _sanitize('GG1SST, SST')
+    >>> _sanitize("GG1SST, SST")
     'GG1SST_SST'
 
     """
@@ -576,7 +576,7 @@ def get_model_name(url):
     return mod_name
 
 
-@timeout_decorator.timeout(20, use_signals=False)
+@timeout_decorator.timeout(40, use_signals=False)
 def is_station(url):
     from netCDF4 import Dataset
 
@@ -651,17 +651,15 @@ def load_ncs(config):
         else:
             model = os.path.splitext(os.path.split(fname)[-1])[0].split("-")[
                 -1
-            ]  # noqa
+            ]
             df = nc2df(fname, columns_name="station_code")
             # FIXME: Horrible work around duplicate times.
             if len(df.index.values) != len(np.unique(df.index.values)):
                 kw = {"subset": "index", "take_last": True}
                 df = df.reset_index().drop_duplicates(**kw).set_index("index")
             kw = {"method": "time", "limit": 2}
-            df = df.reindex(index).interpolate(**kw).ix[index]
+            df = df.reindex(index).interpolate(**kw).loc[index]
             dfs.update({model: df})
-    kw = {"orient": "items", "intersect": False}
-    dfs = pd.Panel.from_dict(dfs, **kw).swapaxes(0, 2)
     return dfs
 
 

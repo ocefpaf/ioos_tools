@@ -79,9 +79,17 @@ def r2(x, y):
     return r2_score(x, y)
 
 
+def _get_df(dfs, station):
+    ret = {}
+    for k, v in dfs.items():
+        ret.update({k: v[station]})
+    return DataFrame.from_dict(ret)
+
+
 def apply_skill(dfs, function, remove_mean=True, filter_tides=False):
     skills = {}
-    for station, df in dfs.iteritems():
+    for station in dfs["OBS_DATA"].columns:
+        df = _get_df(dfs, station)
         if filter_tides:
             df = df.apply(low_pass)
         skill = {}
@@ -90,7 +98,8 @@ def apply_skill(dfs, function, remove_mean=True, filter_tides=False):
             # No observations.
             skills.update({station: np.NaN})
             continue
-        for model, y in df.iteritems():
+        for model in df.columns:
+            y = df[model]
             # No models.
             if y.isnull().all():
                 skills.update({station: np.NaN})
